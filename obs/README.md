@@ -152,3 +152,35 @@ ssh ubuntu@<obs_public_ip> "sudo docker logs obs-clickhouse-1"
 ssh ubuntu@<obs_public_ip> "sudo docker logs obs-grafana-1"
 ssh ubuntu@<obs_public_ip> "sudo docker logs obs-otel-gateway-1"
 ```
+
+## Tearing down the stack
+
+To avoid unnecessary costs in Yandex Cloud, you can stop or delete the Observability VM when not in use.
+
+### Option A: Stop the VM (keeps disks and IPs)
+
+```bash
+yc compute instance stop --name obs-vm
+```
+
+Start it again later with:
+
+```bash
+yc compute instance start --name obs-vm
+```
+
+Note: you will still incur charges for disks and reserved IPs.
+
+### Option B: Destroy all resources via Terraform (recommended for saving costs)
+
+From the terraform directory:
+
+```bash
+cd terraform
+terraform destroy
+```
+
+This removes the VM, disks, public IP, and security group created for the observability stack.
+You will be prompted to confirm with `yes`.
+
+Keep the `terraform.tfstate` file safe if you plan to recreate or manage resources in the future.
