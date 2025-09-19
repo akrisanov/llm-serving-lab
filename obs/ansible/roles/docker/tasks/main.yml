@@ -1,0 +1,21 @@
+- name: Install prerequisites
+  apt:
+    name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
+    state: present
+    update_cache: yes
+
+- name: Install Docker
+  apt:
+    name: "{{ docker_pkg }}"
+    state: present
+
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Install docker compose plugin
+  apt:
+    name: docker-compose-plugin
+    state: present

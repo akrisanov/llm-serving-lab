@@ -1,0 +1,74 @@
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/obs
+    - /opt/obs/grafana/provisioning/datasources
+    - /opt/obs/grafana/provisioning/dashboards
+    - /opt/obs/grafana/dashboards
+    - /opt/obs/clickhouse/init
+    - /opt/obs/gateway
+
+- name: Ship Docker Compose file
+  copy:
+    src: "{{ playbook_dir }}/../files/docker-compose.obs.yml"
+    dest: /opt/obs/docker-compose.yml
+    mode: "0644"
+
+- name: Ship OTel gateway config
+  copy:
+    src: "{{ playbook_dir }}/../files/otel-collector-gateway.yaml"
+    dest: /opt/obs/gateway/otel-collector-gateway.yaml
+    mode: "0644"
+
+- name: Ship Grafana datasource provisioning
+  copy:
+    src: "{{ playbook_dir }}/../files/grafana-provisioning-datasource.yaml"
+    dest: /opt/obs/grafana/provisioning/datasources/clickhouse.yaml
+    mode: "0644"
+
+- name: Ship Grafana dashboards provisioning
+  copy:
+    src: "{{ playbook_dir }}/../files/grafana-provisioning-dashboards.yaml"
+    dest: /opt/obs/grafana/provisioning/dashboards/all.yaml
+    mode: "0644"
+
+- name: Ship dashboards
+  copy:
+    src: "{{ playbook_dir }}/../files/dashboards/"
+    dest: /opt/obs/grafana/dashboards/
+    mode: "0644"
+
+- name: Ship ClickHouse init SQL
+  copy:
+    src: "{{ playbook_dir }}/../files/clickhouse-init/"
+    dest: /opt/obs/clickhouse/init/
+    mode: "0644"
+
+- name: Create .env for container stack
+  copy:
+    dest: /opt/obs/.env
+    mode: "0640"
+    content: |
+      CH_USER={{ ch_user }}
+      CH_PASSWORD={{ ch_password }}
+      CH_DB={{ ch_db }}
+      CH_HTTP_PORT={{ ch_http_port }}
+      CH_NATIVE_PORT={{ ch_native_port }}
+
+      GRAFANA_ADMIN_USER={{ grafana_admin_user }}
+      GRAFANA_ADMIN_PASSWORD={{ grafana_admin_password }}
+      GRAFANA_PORT={{ grafana_port }}
+
+      CH_HTTP_URL=http://clickhouse:8123
+      CH_NATIVE_TCP=clickhouse:9000
+      OTEL_GATEWAY_OTLP_GRPC_PORT={{ otel_grpc_port }}
+      OTEL_GATEWAY_OTLP_HTTP_PORT={{ otel_http_port }}
+
+- name: Bring up the stack
+  community.docker.docker_compose_v2:
+    project_src: /opt/obs
+    env_files: [/opt/obs/.env]
+    state: present

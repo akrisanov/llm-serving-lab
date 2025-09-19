@@ -1,0 +1,61 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CH_DB}
+      CLICKHOUSE_USER: ${CH_USER}
+      CLICKHOUSE_PASSWORD: ${CH_PASSWORD}
+    volumes:
+      - ch_data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    ports:
+      - "${CH_HTTP_PORT:-8123}:8123"
+      - "${CH_NATIVE_PORT:-9000}:9000"
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -s http://localhost:8123/ping | grep -q 'Ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  otel-gateway:
+    image: otel/opentelemetry-collector-contrib:0.136.0
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      CH_USER: ${CH_USER}
+      CH_PASSWORD: ${CH_PASSWORD}
+      CH_DB: ${CH_DB}
+      CH_TCP: ${CH_NATIVE_TCP:-clickhouse:9000}
+    volumes:
+      - ./gateway/otel-collector-gateway.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_GATEWAY_OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTEL_GATEWAY_OTLP_HTTP_PORT:-4318}:4318"
+
+  grafana:
+    image: grafana/grafana:12.3.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+
+volumes:
+  ch_data: {}
+  grafana_data: {}

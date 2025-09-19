@@ -1,0 +1,18 @@
+yc_token     = "ya29.xxxxxxxx"
+yc_cloud_id  = "b1gxxxxxxxxxxxx"
+yc_folder_id = "b1gxxxxxxxxxxxx"
+yc_zone      = "ru-central1-a"
+
+admin_cidr   = "YOUR_HOME_OR_VPN_CIDR/32"
+obs_cidr     = "10.128.0.0/24"   # default subnet for Obs + GPU VMs
+gpu_vm_cidr  = "10.128.0.0/24"   # allow OTLP traffic from any VM in this subnet
+
+ssh_user     = "ubuntu"
+ssh_pubkey   = "ssh-ed25519 AAAA.... your@host"
+
+ch_user      = "otel"
+ch_password  = "CHANGE_ME_STRONG"
+ch_db        = "otel_metrics"
+
+grafana_admin_user     = "admin"
+grafana_admin_password = "CHANGE_ME_STRONG"

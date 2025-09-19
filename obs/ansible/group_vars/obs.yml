@@ -1,0 +1,14 @@
+# ClickHouse & Grafana settings
+ch_user: "{{ lookup('env', 'CH_USER') | default('otel', true) }}"
+ch_password: "{{ lookup('env', 'CH_PASSWORD') | default('CHANGE_ME', true) }}"
+ch_db: "{{ lookup('env', 'CH_DB') | default('otel_metrics', true) }}"
+
+grafana_admin_user: "{{ lookup('env', 'GRAFANA_ADMIN_USER') | default('admin', true) }}"
+grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('CHANGE_ME', true) }}"
+
+# Ports
+ch_http_port: 8123
+ch_native_port: 9000
+grafana_port: 3000
+otel_grpc_port: 4317
+otel_http_port: 4318

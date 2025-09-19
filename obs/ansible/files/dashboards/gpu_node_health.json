@@ -1,0 +1,28 @@
+{
+    "title": "GPU Node Health (Starter)",
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "panels": [
+        {
+            "title": "GPU Utilization (%)",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='gpu_utilization' ORDER BY time"
+                }
+            ]
+        },
+        {
+            "title": "GPU Memory Used (bytes)",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='gpu_memory_used_bytes' ORDER BY time"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 39
+}

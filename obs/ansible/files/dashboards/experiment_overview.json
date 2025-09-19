@@ -1,0 +1,28 @@
+{
+    "title": "Experiment Overview (Starter)",
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "panels": [
+        {
+            "title": "Tokens per second",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='experiment_tokens_per_second' ORDER BY time"
+                }
+            ]
+        },
+        {
+            "title": "Latency p95 (ms)",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='request_latency_ms_p95' ORDER BY time"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 39
+}

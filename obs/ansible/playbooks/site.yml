@@ -1,0 +1,8 @@
+- name: Provision Observability VM
+  hosts: obs
+  become: true
+  vars:
+    docker_pkg: docker.io
+  roles:
+    - docker
+    - obs_stack

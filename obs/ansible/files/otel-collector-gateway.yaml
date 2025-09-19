@@ -1,0 +1,33 @@
+receivers:
+  otlp:
+    protocols:
+      grpc: {}
+      http: {}
+
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 70
+  batch:
+    timeout: 5s
+    send_batch_size: 16384
+  attributes:
+    actions:
+      - key: env
+        value: lab
+        action: upsert
+
+exporters:
+  clickhouse:
+    endpoint: "tcp://${CH_TCP}"
+    username: "${CH_USER}"
+    password: "${CH_PASSWORD}"
+    database: "${CH_DB}"
+    ttl: 720h # 30 days
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [attributes, memory_limiter, batch]
+      exporters: [clickhouse]

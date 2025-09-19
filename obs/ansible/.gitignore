@@ -1,0 +1,20 @@
+# Ansible retry files
+*.retry
+
+# Inventory files with sensitive IPs/hosts
+# inventory.ini
+
+# Group vars / host vars secrets
+# group_vars/*.yml
+# host_vars/*.yml
+
+# Vault password files
+.vault_pass.txt
+
+# Local roles or collections cache
+# roles/*
+# collections/*
+!requirements.yml
+
+# Logs
+*.log
