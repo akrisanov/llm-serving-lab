@@ -1,6 +1,6 @@
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:25.8
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.8}
     restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CH_DB}
@@ -17,13 +17,13 @@ services:
       - "${CH_HTTP_PORT:-8123}:8123"
       - "${CH_NATIVE_PORT:-9000}:9000"
     healthcheck:
-      test: ["CMD", "bash", "-lc", "curl -s http://localhost:8123/ping | grep -q 'Ok'"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 10s
       timeout: 5s
       retries: 12
 
   otel-gateway:
-    image: otel/opentelemetry-collector-contrib:0.136.0
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.135.0}
     restart: unless-stopped
     depends_on:
       clickhouse:
@@ -41,7 +41,7 @@ services:
       - "${OTEL_GATEWAY_OTLP_HTTP_PORT:-4318}:4318"
 
   grafana:
-    image: grafana/grafana:12.3.0
+    image: grafana/grafana:${GRAFANA_VERSION:-12.1.1}
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}

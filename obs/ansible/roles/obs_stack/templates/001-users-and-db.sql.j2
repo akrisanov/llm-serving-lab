@@ -1,0 +1,6 @@
+CREATE DATABASE IF NOT EXISTS {{ ch_db }};
+
+CREATE USER IF NOT EXISTS {{ ch_user }}
+IDENTIFIED WITH sha256_password BY '{{ ch_password }}';
+
+GRANT CREATE, INSERT, SELECT ON {{ ch_db }}.* TO {{ ch_user }};

@@ -1,0 +1,21 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - ch_password != "CHANGE_ME"
+      - grafana_admin_password != "CHANGE_ME"
+    fail_msg: "Please set secure passwords for ClickHouse and Grafana"
+    success_msg: "Password validation passed"
+
+- name: Check disk space
+  ansible.builtin.setup:
+    filter: ansible_mounts
+  register: obs_stack_disk_info
+
+- name: Ensure sufficient disk space
+  ansible.builtin.assert:
+    that:
+      - item.size_available > 10000000000 # 10GB
+    fail_msg: "Insufficient disk space on {{ item.mount }}"
+  loop: "{{ ansible_mounts }}"
+  when: item.mount == "/"

@@ -126,8 +126,29 @@ ansible -i inventory.ini obs -m ping
 ansible-playbook -i inventory.ini playbooks/site.yml
 ```
 
-When it finishes:
+### Verifying the deployment
 
-- Grafana: `http://<obs_public_ip>:3000` (admin creds from vars)
-- ClickHouse HTTP: `http://<obs_public_ip>:8123` (restricted by SG)
-- OTLP gateway: `4317/4318` (only your GPU VM CIDR allowed)
+After successful deployment, verify that all services are running:
+
+```shell
+# Check ClickHouse health
+curl -s http://<obs_public_ip>:8123/ping
+# Should return: Ok.
+
+# Check Grafana availability
+curl -s -o /dev/null -w "%{http_code}" http://<obs_public_ip>:3000
+# Should return: 302 (redirect to login page)
+
+# Check OpenTelemetry Collector ports
+nc -vz <obs_public_ip> 4317  # gRPC endpoint
+nc -vz <obs_public_ip> 4318  # HTTP endpoint
+
+# Check Docker containers status on the VM
+ssh ubuntu@<obs_public_ip> "sudo docker ps"
+# Should show 3 running containers: clickhouse, grafana, otel-gateway
+
+# View container logs if needed
+ssh ubuntu@<obs_public_ip> "sudo docker logs obs-clickhouse-1"
+ssh ubuntu@<obs_public_ip> "sudo docker logs obs-grafana-1"
+ssh ubuntu@<obs_public_ip> "sudo docker logs obs-otel-gateway-1"
+```

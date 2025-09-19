@@ -6,6 +6,11 @@ ch_db: "{{ lookup('env', 'CH_DB') | default('otel_metrics', true) }}"
 grafana_admin_user: "{{ lookup('env', 'GRAFANA_ADMIN_USER') | default('admin', true) }}"
 grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('CHANGE_ME', true) }}"
 
+# Container versions
+clickhouse_version: "25.8"
+otel_collector_version: "0.135.0"
+grafana_version: "12.1.1"
+
 # Ports
 ch_http_port: 8123
 ch_native_port: 9000

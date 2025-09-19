@@ -1,0 +1,8 @@
+---
+- name: Restart obs stack
+  community.docker.docker_compose_v2:
+    project_src: /opt/obs
+    env_files: [/opt/obs/.env]
+    state: present
+    recreate: always
+  listen: "restart stack"

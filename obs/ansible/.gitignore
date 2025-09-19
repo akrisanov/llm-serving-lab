@@ -1,8 +1,11 @@
 # Ansible retry files
 *.retry
 
+# Ansible lock files
+.ansible/.lock
+
 # Inventory files with sensitive IPs/hosts
-# inventory.ini
+inventory.ini
 
 # Group vars / host vars secrets
 # group_vars/*.yml
@@ -13,7 +16,7 @@
 
 # Local roles or collections cache
 # roles/*
-# collections/*
+collections/*
 !requirements.yml
 
 # Logs

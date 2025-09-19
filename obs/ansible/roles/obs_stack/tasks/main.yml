@@ -1,8 +1,14 @@
+- name: Import validation tasks
+  ansible.builtin.import_tasks: validate.yml
+  tags: [validate]
+
 - name: Create directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: "0755"
+    owner: root
+    group: root
   loop:
     - /opt/obs
     - /opt/obs/grafana/provisioning/datasources
@@ -12,43 +18,55 @@
     - /opt/obs/gateway
 
 - name: Ship Docker Compose file
-  copy:
-    src: "{{ playbook_dir }}/../files/docker-compose.obs.yml"
+  ansible.builtin.copy:
+    src: "docker-compose.obs.yml"
     dest: /opt/obs/docker-compose.yml
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Ship OTel gateway config
-  copy:
-    src: "{{ playbook_dir }}/../files/otel-collector-gateway.yaml"
+  ansible.builtin.copy:
+    src: "otel-collector-gateway.yaml"
     dest: /opt/obs/gateway/otel-collector-gateway.yaml
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Ship Grafana datasource provisioning
-  copy:
-    src: "{{ playbook_dir }}/../files/grafana-provisioning-datasource.yaml"
+  ansible.builtin.copy:
+    src: "grafana-provisioning-datasource.yaml"
     dest: /opt/obs/grafana/provisioning/datasources/clickhouse.yaml
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Ship Grafana dashboards provisioning
-  copy:
-    src: "{{ playbook_dir }}/../files/grafana-provisioning-dashboards.yaml"
+  ansible.builtin.copy:
+    src: "grafana-provisioning-dashboards.yaml"
     dest: /opt/obs/grafana/provisioning/dashboards/all.yaml
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Ship dashboards
-  copy:
-    src: "{{ playbook_dir }}/../files/dashboards/"
+  ansible.builtin.copy:
+    src: "dashboards/"
     dest: /opt/obs/grafana/dashboards/
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Ship ClickHouse init SQL
-  copy:
-    src: "{{ playbook_dir }}/../files/clickhouse-init/"
-    dest: /opt/obs/clickhouse/init/
+  ansible.builtin.template:
+    src: "001-users-and-db.sql.j2"
+    dest: /opt/obs/clickhouse/init/001-users-and-db.sql
     mode: "0644"
+    owner: root
+    group: root
 
 - name: Create .env for container stack
-  copy:
+  ansible.builtin.copy:
     dest: /opt/obs/.env
     mode: "0640"
     content: |
@@ -62,6 +80,11 @@
       GRAFANA_ADMIN_PASSWORD={{ grafana_admin_password }}
       GRAFANA_PORT={{ grafana_port }}
 
+      # Container versions
+      CLICKHOUSE_VERSION={{ clickhouse_version }}
+      OTEL_COLLECTOR_VERSION={{ otel_collector_version }}
+      GRAFANA_VERSION={{ grafana_version }}
+
       CH_HTTP_URL=http://clickhouse:8123
       CH_NATIVE_TCP=clickhouse:9000
       OTEL_GATEWAY_OTLP_GRPC_PORT={{ otel_grpc_port }}
@@ -72,3 +95,5 @@
     project_src: /opt/obs
     env_files: [/opt/obs/.env]
     state: present
+  tags: [deploy]
+  notify: restart stack
