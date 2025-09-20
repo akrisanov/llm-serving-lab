@@ -8,8 +8,9 @@ dashboards) happens on the Obs VM.
 ## Components
 
 - **`terraform/`** - Infrastructure provisioning (Yandex Cloud VMs, networking)
-- **`ansible/`** - Configuration management and service deployment 
+- **`ansible/`** - Configuration management and service deployment
 - **`dashboards/`** - Grafana dashboard definitions (JSON format)
+- **`sql/`** - ClickHouse SQL scripts and schema management
 
 ```mermaid
 flowchart LR

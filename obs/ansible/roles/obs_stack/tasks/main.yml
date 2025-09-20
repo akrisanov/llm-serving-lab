@@ -19,7 +19,7 @@
 
 - name: Ship Docker Compose file
   ansible.builtin.copy:
-    src: "docker-compose.obs.yml"
+    src: "{{ playbook_dir }}/../config/docker-compose.yml"
     dest: /opt/obs/docker-compose.yml
     mode: "0644"
     owner: root
@@ -27,7 +27,7 @@
 
 - name: Ship OTel gateway config
   ansible.builtin.copy:
-    src: "otel-collector-gateway.yaml"
+    src: "{{ playbook_dir }}/../config/otel/collector-gateway.yaml"
     dest: /opt/obs/gateway/otel-collector-gateway.yaml
     mode: "0644"
     owner: root
@@ -35,7 +35,7 @@
 
 - name: Ship Grafana datasource provisioning
   ansible.builtin.copy:
-    src: "grafana-provisioning-datasource.yaml"
+    src: "{{ playbook_dir }}/../config/grafana/provisioning-datasource.yaml"
     dest: /opt/obs/grafana/provisioning/datasources/clickhouse.yaml
     mode: "0644"
     owner: root
@@ -43,7 +43,7 @@
 
 - name: Ship Grafana dashboards provisioning
   ansible.builtin.copy:
-    src: "grafana-provisioning-dashboards.yaml"
+    src: "{{ playbook_dir }}/../config/grafana/provisioning-dashboards.yaml"
     dest: /opt/obs/grafana/provisioning/dashboards/all.yaml
     mode: "0644"
     owner: root
@@ -59,7 +59,7 @@
 
 - name: Ship ClickHouse init SQL
   ansible.builtin.template:
-    src: "001-users-and-db.sql.j2"
+    src: "{{ playbook_dir }}/../sql/001-users-and-db.sql.j2"
     dest: /opt/obs/clickhouse/init/001-users-and-db.sql
     mode: "0644"
     owner: root
