@@ -5,6 +5,12 @@ stores them in ClickHouse, and visualizes them in Grafana. The GPU VM stays clea
 only lightweight exporters and an OTel agent run there. The heavy lifting (storage,
 dashboards) happens on the Obs VM.
 
+## Components
+
+- **`terraform/`** - Infrastructure provisioning (Yandex Cloud VMs, networking)
+- **`ansible/`** - Configuration management and service deployment 
+- **`dashboards/`** - Grafana dashboard definitions (JSON format)
+
 ```mermaid
 flowchart LR
   subgraph gpu_vm["GPU VM"]

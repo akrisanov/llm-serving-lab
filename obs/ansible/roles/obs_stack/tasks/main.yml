@@ -51,7 +51,7 @@
 
 - name: Ship dashboards
   ansible.builtin.copy:
-    src: "dashboards/"
+    src: "{{ playbook_dir }}/../dashboards/"
     dest: /opt/obs/grafana/dashboards/
     mode: "0644"
     owner: root
