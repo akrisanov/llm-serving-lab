@@ -9,8 +9,10 @@ dashboards) happens on the Obs VM.
 
 - **`terraform/`** - Infrastructure provisioning (Yandex Cloud VMs, networking)
 - **`ansible/`** - Configuration management and service deployment
+- **`config/`** - Docker Compose and service configurations
 - **`dashboards/`** - Grafana dashboard definitions (JSON format)
 - **`sql/`** - ClickHouse SQL scripts and schema management
+- **`Makefile`** - Convenient management commands for all operations
 
 ```mermaid
 flowchart LR
@@ -48,19 +50,45 @@ to be provider-agnostic. You can adapt it to AWS, GCP, or other cloud providers 
 and adjusting VM provisioning settings as needed. The Ansible roles and Docker Compose setup are cloud-neutral and
 will work on any Linux VM, regardless of the cloud environment.
 
-## Installing Yandex Cloud CLI on macOS
+## Quick Start
 
-```shell
+The easiest way to deploy and manage the observability stack is using the included **Makefile** which provides
+convenient commands for all operations.
+
+### Prerequisites
+
+- **Terraform** >= 1.6.0
+- **Ansible** >= 2.9
+- **Yandex Cloud CLI** (`yc`)
+- **SSH key pair**
+
+### Installation on macOS
+
+**Yandex Cloud CLI:**
+
+```bash
 curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
 exec -l $SHELL
+yc init  # Configure your credentials
+```
 
-yc version
-yc init # or yc init --federation-id=<your_federation_id>
+**Terraform:**
+
+```bash
+brew install terraform
+```
+
+**Ansible:**
+
+```bash
+brew install ansible
 ```
 
 Check out the official [Yandex Cloud documentation](https://yandex.cloud/en/docs/cli/quickstart#initialize) for more details.
 
-### Installing Terraform on macOS
+## Deployment Guide
+
+### 1. Initial Setup
 
 ```bash
 cd ~/Downloads
@@ -103,91 +131,126 @@ brew install ansible
 ansible --version
 ```
 
-## Ansible
+## Management Commands
 
-A suggested `.gitignore` template for Ansible is included in this repo.
-Some sensitive paths are commented out so you can push the template itself to Git.
-Later, uncomment them to ensure secrets and local files are excluded.
+The project includes a comprehensive **Makefile** with commands for all operations:
 
-From your workstation (with SSH access to the VM’s public IP):
+**Setup & Configuration:**
 
-```shell
-cd ansible
-
-# (first run only) install needed collection
-ansible-galaxy collection install community.docker
-
-# set env secrets for group_vars (or edit obs.yml directly)
-# You can either export these secrets as environment variables (shown below)
-# or place them directly in group_vars/obs.yml for convenience.
-export CH_USER=otel
-export CH_PASSWORD='CHANGE_ME_STRONG'
-export CH_DB=otel_metrics
-export GRAFANA_ADMIN_USER=admin
-export GRAFANA_ADMIN_PASSWORD='CHANGE_ME_STRONG'
-
-# check connectivity
-ansible -i inventory.ini obs -m ping
-
-# run provisioning
-ansible-playbook -i inventory.ini playbooks/site.yml
+```bash
+make help           # Show all available commands
+make copy-examples  # Copy example configuration files
+make setup         # Initialize Terraform and install Ansible dependencies
 ```
 
-### Verifying the deployment
+**Infrastructure Management:**
+
+```bash
+make apply         # Deploy infrastructure
+make destroy       # Destroy infrastructure
+make plan          # Show planned changes
+make validate      # Validate Terraform configuration
+```
+
+**Service Management:**
+
+```bash
+make deploy        # Deploy services with Ansible
+make ping          # Test connectivity to servers
+make config        # Run configuration check
+```
+
+**Monitoring & Debugging:**
+
+```bash
+make status-services  # Check service status
+make logs            # View service logs
+make ssh            # SSH to obs server
+```
+
+**Security:**
+
+```bash
+make vault-create   # Create encrypted vault file
+make vault-edit     # Edit vault file
+make vault-view     # View vault content
+```
+
+**Complete Workflows:**
+
+```bash
+make deploy-all     # Deploy infrastructure and configure services
+make teardown       # Stop services and destroy infrastructure
+```
+
+## Verification and Access
 
 After successful deployment, verify that all services are running:
 
-```shell
-# Check ClickHouse health
-curl -s http://<obs_public_ip>:8123/ping
-# Should return: Ok.
+```bash
+# Check service status
+make status-services
 
-# Check Grafana availability
-curl -s -o /dev/null -w "%{http_code}" http://<obs_public_ip>:3000
-# Should return: 302 (redirect to login page)
+# View service logs
+make logs
 
-# Check OpenTelemetry Collector ports
-nc -vz <obs_public_ip> 4317  # gRPC endpoint
-nc -vz <obs_public_ip> 4318  # HTTP endpoint
+# Test connectivity
+make ping
 
-# Check Docker containers status on the VM
-ssh ubuntu@<obs_public_ip> "sudo docker ps"
-# Should show 3 running containers: clickhouse, grafana, otel-gateway
-
-# View container logs if needed
-ssh ubuntu@<obs_public_ip> "sudo docker logs obs-clickhouse-1"
-ssh ubuntu@<obs_public_ip> "sudo docker logs obs-grafana-1"
-ssh ubuntu@<obs_public_ip> "sudo docker logs obs-otel-gateway-1"
+# SSH to server for direct access
+make ssh
 ```
 
-## Tearing down the stack
+**Access the services:**
 
-To avoid unnecessary costs in Yandex Cloud, you can stop or delete the Observability VM when not in use.
+- **Grafana**: `http://<obs_public_ip>:3000` (admin/admin)
+- **ClickHouse**: `http://<obs_public_ip>:8123`
+- **OpenTelemetry**:
+  - gRPC: `<obs_public_ip>:4317`
+  - HTTP: `<obs_public_ip>:4318`
 
-### Option A: Stop the VM (keeps disks and IPs)
+## Cleanup
+
+To avoid unnecessary costs, you can stop services and destroy infrastructure:
 
 ```bash
+# Stop services and destroy all resources
+make teardown
+
+# Or step by step:
+make clean-remote  # Stop services only
+make destroy       # Destroy infrastructure
+```
+
+**Alternative: Manual VM management**
+
+```bash
+# Stop VM (keeps disks and IPs, still incurs costs)
 yc compute instance stop --name obs-vm
-```
 
-Start it again later with:
-
-```bash
+# Start VM later
 yc compute instance start --name obs-vm
 ```
 
-Note: you will still incur charges for disks and reserved IPs.
+## Troubleshooting
 
-### Option B: Destroy all resources via Terraform (recommended for saving costs)
-
-From the terraform directory:
+**Common issues and solutions:**
 
 ```bash
-cd terraform
-terraform destroy
+# Check configuration before applying
+make check-config
+
+# View detailed logs
+make logs
+
+# Test connectivity
+make ping
+
+# Clean local cache and restart
+make clean
+make setup
 ```
 
-This removes the VM, disks, public IP, and security group created for the observability stack.
-You will be prompted to confirm with `yes`.
+**Manual operations (if needed):**
 
-Keep the `terraform.tfstate` file safe if you plan to recreate or manage resources in the future.
+All Makefile commands use standard Terraform and Ansible underneath, so you can always fall back to manual commands in the respective directories if needed.
