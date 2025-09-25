@@ -1,4 +1,4 @@
 ---
 # Handlers for docker role
-- name: restart ssh connection
-  meta: reset_connection
+- name: Restart ssh connection
+  ansible.builtin.meta: reset_connection

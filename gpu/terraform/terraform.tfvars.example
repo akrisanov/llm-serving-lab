@@ -1,0 +1,21 @@
+yc_token     = "ya29.xxxxxxxx"
+yc_cloud_id  = "b1gxxxxxxxxxxxx"
+yc_folder_id = "b1gxxxxxxxxxxxx"
+yc_zone      = "ru-central1-a"
+
+# Access
+my_ip          = "X.X.X.X/32"
+vm_user        = "ubuntu"
+ssh_public_key = "ssh-ed25519 AAAAC3Nz... your_key"
+
+# GPU settings
+gpu_type  = "t4i"   # or "a100"
+cores     = 8
+memory_gb = 32
+disk_gb   = 200
+
+# Observability (automatically set by Makefile)
+obs_otlp_endpoint = "placeholder:4317"
+
+# vLLM port (if you change it, don't forget to change SG and ansible vars)
+vllm_port = 8000

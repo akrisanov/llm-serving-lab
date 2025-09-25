@@ -19,7 +19,7 @@
   ansible.builtin.user:
     name: ubuntu
     groups: docker
-    append: yes
+    append: true
   notify: restart ssh connection
 
 - name: Try install docker compose plugin via apt
@@ -32,8 +32,12 @@
 
 - name: Set Compose v2 download URL per arch (fallback)
   ansible.builtin.set_fact:
-    docker_compose_url: "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-{{ 'aarch64' if ansible_architecture in ['aarch64', 'arm64'] else 'x86_64' }}"
-  when: docker_compose_apt.failed | default(false) or ('No package matching' in (docker_compose_apt.msg | default('')))
+    docker_compose_url: >-
+      https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-{{
+      'aarch64' if ansible_architecture in ['aarch64', 'arm64'] else 'x86_64' }}
+  when: >
+    docker_compose_apt.failed | default(false) or
+    ('No package matching' in (docker_compose_apt.msg | default('')))
 
 - name: Ensure cli-plugins dir exists (fallback)
   ansible.builtin.file:
@@ -42,7 +46,9 @@
     mode: "0755"
     owner: root
     group: root
-  when: docker_compose_apt.failed | default(false) or ('No package matching' in (docker_compose_apt.msg | default('')))
+  when: >
+    docker_compose_apt.failed | default(false) or
+    ('No package matching' in (docker_compose_apt.msg | default('')))
 
 - name: Download Docker Compose v2 binary to cli-plugins (fallback)
   ansible.builtin.get_url:
@@ -51,10 +57,14 @@
     mode: "0755"
     owner: root
     group: root
-  when: docker_compose_apt.failed | default(false) or ('No package matching' in (docker_compose_apt.msg | default('')))
+  when: >
+    docker_compose_apt.failed | default(false) or
+    ('No package matching' in (docker_compose_apt.msg | default('')))
 
 - name: Verify docker compose v2 is available
   ansible.builtin.command: docker compose version
-  register: compose_version
+  register: docker_compose_version
   changed_when: false
-  when: docker_compose_apt.failed | default(false) or ('No package matching' in (docker_compose_apt.msg | default('')))
+  when: >
+    docker_compose_apt.failed | default(false) or
+    ('No package matching' in (docker_compose_apt.msg | default('')))

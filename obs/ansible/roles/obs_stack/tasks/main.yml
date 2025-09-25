@@ -98,5 +98,7 @@
     sudo -u ubuntu docker compose up -d
   args:
     chdir: /opt/obs
+  register: obs_stack_docker_compose_result
+  changed_when: "'Started' in obs_stack_docker_compose_result.stderr or 'Created' in obs_stack_docker_compose_result.stderr"
   tags: [deploy]
   notify: restart stack
