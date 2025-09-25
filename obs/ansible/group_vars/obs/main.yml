@@ -1,0 +1,19 @@
+# ClickHouse & Grafana settings
+ch_user: "otel"
+ch_password: "{{ vault_ch_password }}"
+ch_db: "otel_metrics"
+
+grafana_admin_user: "admin"
+grafana_admin_password: "{{ vault_grafana_admin_password }}"
+
+# Container versions
+clickhouse_version: "25.8"
+otel_collector_version: "0.135.0"
+grafana_version: "12.1.1"
+
+# Ports
+ch_http_port: 8123
+ch_native_port: 9000
+grafana_port: 3000
+otel_grpc_port: 4317
+otel_http_port: 4318

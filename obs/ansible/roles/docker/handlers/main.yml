@@ -1,0 +1,4 @@
+---
+# Handlers for docker role
+- name: restart ssh connection
+  meta: reset_connection

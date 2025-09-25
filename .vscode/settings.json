@@ -1,0 +1,17 @@
+{
+    "ansible.validation.enabled": true,
+    "ansible.validation.lint.enabled": true,
+    "ansible.ansible.useFullyQualifiedCollectionNames": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/collections/": true,
+    },
+    "files.associations": {
+        "**/obs/ansible/**/*.yml": "ansible",
+        "**/obs/ansible/**/*.yaml": "ansible"
+    }
+}

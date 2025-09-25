@@ -7,8 +7,8 @@
     path: "{{ item }}"
     state: directory
     mode: "0755"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
   loop:
     - /opt/obs
     - /opt/obs/grafana/provisioning/datasources
@@ -19,56 +19,58 @@
 
 - name: Ship Docker Compose file
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../config/docker-compose.yml"
+    src: "{{ config_path | default(playbook_dir + '/../../config') }}/docker-compose.yml"
     dest: /opt/obs/docker-compose.yml
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Ship OTel gateway config
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../config/otel/collector-gateway.yaml"
+    src: "{{ config_path | default(playbook_dir + '/../../config') }}/otel/collector-gateway.yaml"
     dest: /opt/obs/gateway/otel-collector-gateway.yaml
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Ship Grafana datasource provisioning
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../config/grafana/provisioning-datasource.yaml"
+    src: "{{ config_path | default(playbook_dir + '/../../config') }}/grafana/provisioning-datasource.yaml"
     dest: /opt/obs/grafana/provisioning/datasources/clickhouse.yaml
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Ship Grafana dashboards provisioning
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../config/grafana/provisioning-dashboards.yaml"
+    src: "{{ config_path | default(playbook_dir + '/../../config') }}/grafana/provisioning-dashboards.yaml"
     dest: /opt/obs/grafana/provisioning/dashboards/all.yaml
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Ship dashboards
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../dashboards/"
+    src: "{{ (obs_path | default(playbook_dir + '/../..')) }}/dashboards/"
     dest: /opt/obs/grafana/dashboards/
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Ship ClickHouse init SQL
   ansible.builtin.template:
-    src: "{{ playbook_dir }}/../sql/001-users-and-db.sql.j2"
+    src: "{{ (obs_path | default(playbook_dir + '/../..')) }}/sql/001-users-and-db.sql.j2"
     dest: /opt/obs/clickhouse/init/001-users-and-db.sql
     mode: "0644"
-    owner: root
-    group: root
+    owner: ubuntu
+    group: ubuntu
 
 - name: Create .env for container stack
   ansible.builtin.copy:
     dest: /opt/obs/.env
-    mode: "0640"
+    mode: "0644"
+    owner: ubuntu
+    group: ubuntu
     content: |
       CH_USER={{ ch_user }}
       CH_PASSWORD={{ ch_password }}
@@ -91,9 +93,10 @@
       OTEL_GATEWAY_OTLP_HTTP_PORT={{ otel_http_port }}
 
 - name: Bring up the stack
-  community.docker.docker_compose_v2:
-    project_src: /opt/obs
-    env_files: [/opt/obs/.env]
-    state: present
+  ansible.builtin.shell: |
+    cd /opt/obs
+    sudo -u ubuntu docker compose up -d
+  args:
+    chdir: /opt/obs
   tags: [deploy]
   notify: restart stack

@@ -1,0 +1,5 @@
+# Example inventory for obs stack
+# Copy this file to inventory.ini and update with your server details
+
+[obs]
+obs-vm ansible_host=YOUR_SERVER_IP ansible_user=ubuntu

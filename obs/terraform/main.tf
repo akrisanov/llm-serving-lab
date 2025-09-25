@@ -64,6 +64,13 @@ resource "yandex_vpc_security_group" "obs_sg" {
     v4_cidr_blocks = [var.gpu_vm_cidr]
   }
 
+  # ICMP (ping) from internal subnet
+  ingress {
+    protocol       = "ICMP"
+    description    = "ICMP from internal subnet"
+    v4_cidr_blocks = ["10.128.0.0/24"]
+  }
+
   egress {
     protocol       = "ANY"
     description    = "all egress"

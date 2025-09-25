@@ -15,6 +15,13 @@
     enabled: true
     state: started
 
+- name: Add ubuntu user to docker group
+  ansible.builtin.user:
+    name: ubuntu
+    groups: docker
+    append: yes
+  notify: restart ssh connection
+
 - name: Try install docker compose plugin via apt
   ansible.builtin.apt:
     name: docker-compose-plugin

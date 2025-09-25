@@ -1,6 +1,11 @@
+-- Create database first
 CREATE DATABASE IF NOT EXISTS {{ ch_db }};
 
+-- Create user with proper syntax (ClickHouse 25.x)
 CREATE USER IF NOT EXISTS {{ ch_user }}
-IDENTIFIED WITH sha256_password BY '{{ ch_password }}';
+IDENTIFIED WITH sha256_password BY '{{ ch_password }}'
+SETTINGS readonly = 0;
 
-GRANT CREATE, INSERT, SELECT ON {{ ch_db }}.* TO {{ ch_user }};
+-- Grant permissions
+GRANT CREATE, INSERT, SELECT, DROP ON {{ ch_db }}.* TO {{ ch_user }};
+GRANT SHOW TABLES ON {{ ch_db }}.* TO {{ ch_user }};
