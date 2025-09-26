@@ -174,7 +174,18 @@ make ssh            # SSH to obs server
 make vault-create   # Create encrypted vault file
 make vault-edit     # Edit vault file
 make vault-view     # View vault content
+make vault-password # Create vault password file for automatic authentication
 ```
+
+**Note**: Ansible vault operations require a password file at `ansible/group_vars/.vault_pass`.
+Use `make vault-password` to create this file securely, or create it manually:
+
+```bash
+echo "your_vault_password" > ansible/group_vars/.vault_pass
+chmod 600 ansible/group_vars/.vault_pass
+```
+
+Alternatively, you can use `--ask-vault-pass` flag with ansible commands if you prefer manual password entry.
 
 **Complete Workflows:**
 
@@ -222,7 +233,7 @@ make clean-remote  # Stop services only
 make destroy       # Destroy infrastructure
 ```
 
-**Alternative: Manual VM management**
+### Alternative: Manual VM management
 
 ```bash
 # Stop VM (keeps disks and IPs, still incurs costs)
@@ -253,4 +264,5 @@ make setup
 
 **Manual operations (if needed):**
 
-All Makefile commands use standard Terraform and Ansible underneath, so you can always fall back to manual commands in the respective directories if needed.
+All Makefile commands use standard Terraform and Ansible underneath, so you can always fall back to
+manual commands in the respective directories if needed.

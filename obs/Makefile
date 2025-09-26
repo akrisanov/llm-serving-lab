@@ -86,6 +86,13 @@ vault-encrypt: ## Encrypt existing vault file
 vault-decrypt: ## Decrypt vault file
 	cd ansible && ansible-vault decrypt group_vars/obs/vault.yml
 
+vault-password: ## Create vault password file for automatic authentication
+	@read -s -p "Enter vault password: " password; \
+	echo; \
+	echo "$$password" > ansible/group_vars/.vault_pass; \
+	chmod 600 ansible/group_vars/.vault_pass; \
+	echo "Vault password file created at ansible/group_vars/.vault_pass"
+
 # Testing and verification
 test: ## Run connectivity and service tests
 	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --tags verify
