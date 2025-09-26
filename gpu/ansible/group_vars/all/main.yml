@@ -1,0 +1,20 @@
+# Variables for GPU setup
+# Reference vault variables using vault_ prefix
+
+# NVIDIA driver configuration
+nvidia_driver_version: "535" # Can be 535, 550, 560, etc.
+
+# HuggingFace configuration
+huggingface_token: "{{ vault_huggingface_token | default('') }}"
+
+# API authentication
+vllm_api_key: "{{ vault_vllm_api_key | default('') }}"
+
+# Model configuration
+model_name: "mistralai/Mistral-7B-Instruct-v0.3"
+vllm_port: "8000"
+tensor_parallel_size: "1"
+max_model_len: "2048"
+
+# OpenTelemetry configuration
+otel_endpoint: "{{ obs_otlp_endpoint | default('obs-vm:4317') }}"

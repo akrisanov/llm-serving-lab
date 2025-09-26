@@ -1,0 +1,19 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart vllm
+  ansible.builtin.systemd:
+    name: vllm
+    state: restarted
+
+- name: Restart metrics-exporter
+  ansible.builtin.systemd:
+    name: metrics-exporter
+    state: restarted
+
+- name: Verify NVIDIA driver after reboot
+  ansible.builtin.command: nvidia-smi
+  changed_when: false
+  failed_when: false

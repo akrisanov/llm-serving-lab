@@ -1,0 +1,206 @@
+---
+- name: Configure sudo without password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/ubuntu
+    line: "ubuntu ALL=(ALL) NOPASSWD:ALL"
+    create: true
+    mode: "0440"
+  become: true
+  when: ansible_user == 'ubuntu'
+  failed_when: false
+
+- name: Stop unattended upgrades if running
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    state: stopped
+  failed_when: false
+
+- name: Kill any remaining dpkg processes
+  ansible.builtin.shell: |
+    pkill -f unattended-upgrade || true
+    pkill -f apt.systemd.daily || true
+  changed_when: false
+  failed_when: false
+
+- name: Wait for dpkg lock to be released
+  ansible.builtin.shell: |
+    for i in {1..30}; do
+      if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+        echo "Lock released after $i attempts"
+        exit 0
+      fi
+      echo "Waiting for dpkg lock... attempt $i/30"
+      sleep 2
+    done
+    echo "Force removing dpkg locks"
+    rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+    exit 0
+  changed_when: false
+
+- name: Update system packages
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check current NVIDIA driver version
+  ansible.builtin.command: cat /proc/driver/nvidia/version
+  register: gpu_setup_nvidia_driver_version
+  failed_when: false
+  changed_when: false
+
+- name: Check NVIDIA utils version
+  ansible.builtin.command: "dpkg -l nvidia-utils-{{ nvidia_driver_version }}"
+  register: gpu_setup_nvidia_utils_version
+  failed_when: false
+  changed_when: false
+
+- name: Display driver version mismatch if exists
+  ansible.builtin.debug:
+    msg: |
+      Current kernel driver: {{ gpu_setup_nvidia_driver_version.stdout | regex_search('([0-9]+\.[0-9]+\.[0-9]+)') }}
+      Utils version: {{ gpu_setup_nvidia_utils_version.stdout | regex_search('([0-9]+\.[0-9]+\.[0-9]+)') }}
+  when: gpu_setup_nvidia_driver_version.rc == 0 and gpu_setup_nvidia_utils_version.rc == 0
+
+- name: Install recommended NVIDIA driver
+  ansible.builtin.apt:
+    name: "nvidia-driver-{{ nvidia_driver_version }}"
+    state: present
+  register: gpu_setup_nvidia_driver_install
+
+- name: Install essential packages
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - git
+      - curl
+      - htop
+      - nvtop
+    state: present
+
+- name: Reboot system if NVIDIA driver was updated
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    connect_timeout: 60
+    test_command: nvidia-smi
+  when: gpu_setup_nvidia_driver_install.changed
+  notify:
+    - Verify NVIDIA driver after reboot
+
+- name: Wait for system to be ready after reboot
+  ansible.builtin.wait_for_connection:
+    timeout: 300
+  when: gpu_setup_nvidia_driver_install.changed
+
+- name: Verify NVIDIA driver is working
+  ansible.builtin.command: nvidia-smi
+  register: gpu_setup_nvidia_smi_result
+  changed_when: false
+  failed_when: gpu_setup_nvidia_smi_result.rc != 0
+
+- name: Create vLLM user
+  ansible.builtin.user:
+    name: vllm
+    system: true
+    shell: /bin/bash
+    home: /opt/vllm
+    create_home: true
+
+- name: Create vLLM directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: vllm
+    group: vllm
+    mode: "0755"
+  loop:
+    - /opt/vllm
+    - /opt/vllm/models
+    - /opt/vllm/logs
+    - /opt/vllm/config
+
+- name: Create Python virtual environment for vLLM
+  ansible.builtin.command: python3 -m venv /opt/vllm/venv
+  args:
+    creates: /opt/vllm/venv
+  become: true
+  become_user: vllm
+
+- name: Install vLLM and dependencies
+  ansible.builtin.pip:
+    name:
+      - vllm
+      - transformers
+      - torch
+      - opentelemetry-api
+      - opentelemetry-sdk
+      - opentelemetry-exporter-otlp
+      - opentelemetry-instrumentation
+      - prometheus-client
+    virtualenv: /opt/vllm/venv
+  become: true
+  become_user: vllm
+
+- name: Install GPU monitoring tools
+  ansible.builtin.pip:
+    name:
+      - pynvml
+      - psutil
+      - requests
+    virtualenv: /opt/vllm/venv
+  become: true
+  become_user: vllm
+
+- name: Create vLLM startup script
+  ansible.builtin.template:
+    src: vllm_start.sh.j2
+    dest: /opt/vllm/start_vllm.sh
+    owner: vllm
+    group: vllm
+    mode: "0755"
+
+- name: Create metrics exporter script
+  ansible.builtin.template:
+    src: metrics_exporter.py.j2
+    dest: /opt/vllm/metrics_exporter.py
+    owner: vllm
+    group: vllm
+    mode: "0644"
+
+- name: Create vLLM systemd service
+  ansible.builtin.template:
+    src: vllm.service.j2
+    dest: /etc/systemd/system/vllm.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart vllm
+
+- name: Create metrics exporter systemd service
+  ansible.builtin.template:
+    src: metrics-exporter.service.j2
+    dest: /etc/systemd/system/metrics-exporter.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart metrics-exporter
+
+- name: Create environment file with secrets
+  ansible.builtin.template:
+    src: env.j2
+    dest: /opt/vllm/config/env
+    owner: vllm
+    group: vllm
+    mode: "0600"
+  notify:
+    - Restart vllm
+
+- name: Enable and start services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - metrics-exporter
+    - vllm

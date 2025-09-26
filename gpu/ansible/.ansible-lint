@@ -1,0 +1,23 @@
+---
+# Ansible Lint Configuration
+exclude_paths:
+  - .github/
+  - .ansible/
+  - collections/
+  - vault/.vault_pass
+
+# Profile defines which rules to enable
+profile: production
+
+# Skip certain rules that don't apply to our use case
+skip_list:
+  - no-handler # Allow conditional tasks for complex reboot scenarios
+
+# Increase the verbosity level
+verbosity: 1
+
+# Enable checking of loop variable prefixes in roles
+loop_var_prefix: "{{ role_name }}_"
+
+# Enable offline mode to avoid downloads
+offline: false

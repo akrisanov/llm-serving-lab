@@ -89,7 +89,7 @@ logs: ## Show vLLM service logs on remote host
 
 status-services: ## Check service status on remote host
 	@if [ -f ansible/inventory.ini ]; then \
-		cd ansible && ansible -i inventory.ini gpu -m shell -a "systemctl status vllm node_exporter dcgm-exporter --no-pager"; \
+		cd ansible && ansible -i inventory.ini gpu -m shell -a "systemctl status vllm metrics-exporter --no-pager"; \
 	else \
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
 		exit 1; \
@@ -128,6 +128,8 @@ copy-examples: ## Copy example files for configuration
 	cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 	@if [ -d ansible ]; then \
 		cp ansible/inventory.ini.example ansible/inventory.ini || true; \
+		cp ansible/vault/vault.yml.example ansible/vault/vault.yml || true; \
+		echo "Remember to encrypt vault file with: make vault-encrypt"; \
 	fi
 
 edit-config: ## Edit terraform configuration
@@ -159,8 +161,33 @@ set-obs-endpoint: ## Set OBS OTLP endpoint in terraform.tfvars from obs stack
 
 test-obs: ## Test OBS connectivity
 	@if [ -f ansible/inventory.ini ]; then \
-		cd ansible && ansible -i inventory.ini gpu -m shell -a "curl -v telnet://\$$(grep obs_otlp_endpoint ../terraform/terraform.tfvars | cut -d'=' -f2 | tr -d '\" ')"; \
+		OBS_ENDPOINT=$$(grep obs_otlp_endpoint terraform/terraform.tfvars | cut -d'=' -f2 | tr -d '\" '); \
+		echo "Testing connectivity to OBS: $$OBS_ENDPOINT"; \
+		cd ansible && ansible -i inventory.ini gpu -m shell -a "nc -zv \$$(echo $$OBS_ENDPOINT | cut -d: -f1) \$$(echo $$OBS_ENDPOINT | cut -d: -f2)"; \
 	else \
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
 		exit 1; \
 	fi
+
+# Vault management commands
+vault-create: ## Create new encrypted vault file
+	cd ansible && ansible-vault create vault/vault.yml
+
+vault-edit: ## Edit encrypted vault file
+	cd ansible && ansible-vault edit vault/vault.yml
+
+vault-view: ## View encrypted vault file
+	cd ansible && ansible-vault view vault/vault.yml
+
+vault-encrypt: ## Encrypt existing vault file
+	cd ansible && ansible-vault encrypt vault/vault.yml
+
+vault-decrypt: ## Decrypt vault file
+	cd ansible && ansible-vault decrypt vault/vault.yml
+
+vault-password: ## Create vault password file for automatic authentication
+	@read -s -p "Enter vault password: " password; \
+	echo; \
+	echo "$$password" > ansible/vault/.vault_pass; \
+	chmod 600 ansible/vault/.vault_pass; \
+	echo "Vault password file created at ansible/vault/.vault_pass"

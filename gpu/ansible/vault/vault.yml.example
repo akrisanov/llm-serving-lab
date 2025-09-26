@@ -1,0 +1,18 @@
+# Encrypted secrets for GPU VM setup
+#
+# This file contains sensitive configuration values that should not be
+# committed to version control. Use ansible-vault to encrypt this file:
+#
+# ansible-vault encrypt vault.yml
+# ansible-vault edit vault.yml
+#
+# Required secrets:
+
+# HuggingFace token for accessing gated models (optional)
+vault_huggingface_token: "CHANGE_ME_hf_your_token_here"
+
+# vLLM API key (optional, for API authentication)
+vault_vllm_api_key: "CHANGE_ME_your_vllm_api_key"
+
+# Example secrets - replace with your values
+vault_admin_password: "CHANGE_ME_secure_password"

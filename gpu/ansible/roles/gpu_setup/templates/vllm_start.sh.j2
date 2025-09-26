@@ -1,0 +1,62 @@
+#!/bin/bash
+set -e
+
+# Load environment variables
+if [ -f /opt/vllm/config/env ]; then
+    source /opt/vllm/config/env
+fi
+
+# Default values
+MODEL_NAME="${MODEL_NAME:-mistralai/Mistral-7B-Instruct-v0.3}"
+VLLM_PORT="${VLLM_PORT:-8000}"
+TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-1}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-2048}"
+
+echo "Starting vLLM server..."
+echo "Model: ${MODEL_NAME}"
+echo "Port: ${VLLM_PORT}"
+echo "Tensor parallel size: ${TENSOR_PARALLEL_SIZE}"
+echo "Max model length: ${MAX_MODEL_LEN}"
+
+cd /opt/vllm
+
+# Activate virtual environment
+source /opt/vllm/venv/bin/activate
+
+# Install huggingface-hub if not present
+pip install --quiet huggingface-hub
+
+# Check if HF_TOKEN is provided and login
+if [ -n "${HF_TOKEN}" ]; then
+    echo "Authenticating with HuggingFace..."
+    echo "${HF_TOKEN}" | python -c "
+import sys
+import huggingface_hub
+token = sys.stdin.read().strip()
+huggingface_hub.login(token=token)
+print('HuggingFace authentication successful')
+"
+else
+    echo "Warning: HF_TOKEN not set. Some models may require authentication."
+fi
+
+# Start vLLM server with OpenTelemetry instrumentation
+VLLM_ARGS="--model ${MODEL_NAME} --host 0.0.0.0 --port ${VLLM_PORT} --tensor-parallel-size ${TENSOR_PARALLEL_SIZE} --max-model-len ${MAX_MODEL_LEN} --trust-remote-code --gpu-memory-utilization 0.8"
+
+# Add API key if provided
+if [ -n "${VLLM_API_KEY}" ]; then
+    echo "API authentication enabled"
+    VLLM_ARGS="${VLLM_ARGS} --api-key ${VLLM_API_KEY}"
+else
+    echo "Warning: No API key set. vLLM API will be unprotected!"
+fi
+
+echo "Starting vLLM server..."
+echo "Args: ${VLLM_ARGS}"
+
+# Set environment variables to avoid compilation issues
+export TORCH_COMPILE_DISABLE=1
+export VLLM_DISABLE_COMPILATION_CACHE=1
+export VLLM_USE_TORCH_COMPILE=0
+
+exec python -m vllm.entrypoints.openai.api_server ${VLLM_ARGS}

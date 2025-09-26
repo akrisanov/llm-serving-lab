@@ -49,9 +49,10 @@ The infrastructure includes:
 
 1. **Yandex Cloud CLI** configured with sufficient permissions
 2. **Terraform** >= 1.6.0 installed
-3. **Make** utility (standard on macOS/Linux)
-4. **SSH key pair** for VM access
-5. **Observability stack** deployed (optional, for metrics collection)
+3. **Ansible** >= 2.9 for configuration management
+4. **Make** utility (standard on macOS/Linux)
+5. **SSH key pair** for VM access
+6. **Observability stack** deployed (optional, for metrics collection)
 
 > **💡 Tip**: All operations are managed through `make` commands - no need to remember complex terraform or ansible commands!
 
@@ -165,8 +166,23 @@ make status            # Show infrastructure status
 make ssh               # SSH to GPU VM
 make gpu-info          # Show GPU status and utilization
 make status-services   # Check systemd services status
-make logs             # Show system logs
-make vllm-logs        # Show vLLM service logs (if configured)
+make logs              # Show vLLM service logs on remote host
+```
+
+### Security & Secrets Management
+
+```bash
+make vault-create      # Create new encrypted vault file
+make vault-edit        # Edit encrypted vault file
+make vault-view        # View encrypted vault file
+make vault-password    # Create vault password file for automatic authentication
+```
+
+**Note**: Ansible vault operations require a password file at `ansible/vault/.vault_pass`. Use `make vault-password` to create this file securely, or create it manually:
+
+```bash
+echo "your_vault_password" > ansible/vault/.vault_pass
+chmod 600 ansible/vault/.vault_pass
 ```
 
 ### Observability Integration
@@ -178,25 +194,32 @@ make test-obs         # Test OBS connectivity
 
 ## Post-Deployment Setup
 
-After deploying with `make deploy-all`:
+After deploying with `make deploy-all`, the VM comes with vLLM pre-installed and configured:
 
-1. **Connect to VM**: `make ssh`
+1. **Check deployment status**: `make status-services`
 2. **Check GPU status**: `make gpu-info`
-3. **Install your inference framework** (vLLM, TensorRT-LLM, etc.)
-4. **Configure OTLP metrics export**: `make set-obs-endpoint`
-5. **Load your LLM models**
+3. **Configure OTLP metrics export**: `make set-obs-endpoint`
+4. **Start vLLM service**: `make ssh` then `sudo systemctl start vllm`
+5. **Monitor logs**: `make logs`
 
-Example vLLM setup on the GPU VM:
+The vLLM service is pre-configured to:
+
+- Load Mistral-7B-Instruct-v0.3 model by default
+- Listen on port 8000 with OpenAI-compatible API
+- Export GPU metrics to your observability stack
+- Run as systemd service with automatic restart
+
+To customize the model or configuration:
 
 ```bash
-# Install vLLM
-pip install vllm
+# Connect to VM
+make ssh
 
-# Start vLLM server
-python -m vllm.entrypoints.openai.api_server \
-   --model mistral-7b-instruct \
-   --max-model-len 8192 \
-   --host 0.0.0.0 --port 8000
+# Edit vLLM configuration
+sudo systemctl edit vllm
+
+# Or modify the startup script
+sudo nano /opt/vllm/start_vllm.sh
 ```
 
 ## Security Considerations
@@ -247,7 +270,7 @@ python -m vllm.entrypoints.openai.api_server \
    make logs
 
    # Check vLLM logs if running
-   make vllm-logs
+   make logs
    ```
 
 4. **Network issues**:
@@ -301,16 +324,21 @@ make plan              # Show terraform plan
 make deploy            # Deploy infrastructure
 make deploy-all        # Full deployment (init + deploy)
 make destroy           # Destroy infrastructure
+make teardown          # Stop services and destroy infrastructure
 make output            # Show terraform outputs
 make status            # Show infrastructure status
 make ssh               # SSH to GPU VM
 make gpu-info          # Show GPU status and utilization
 make status-services   # Check systemd services status
-make logs              # Show system logs
-make vllm-logs         # Show vLLM service logs
+make stop-services     # Stop services on remote host
+make logs              # Show vLLM service logs on remote host
 make set-obs-endpoint  # Configure OBS endpoint
 make test-obs          # Test OBS connectivity
 make clean             # Clean terraform state and cache
+make vault-create      # Create new encrypted vault file
+make vault-edit        # Edit encrypted vault file
+make vault-view        # View encrypted vault file
+make vault-password    # Create vault password file
 ```
 
 ## Integration

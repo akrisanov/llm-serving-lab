@@ -1,0 +1,23 @@
+[Unit]
+Description=GPU Metrics Exporter for OBS
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=vllm
+Group=vllm
+WorkingDirectory=/opt/vllm
+ExecStart=/opt/vllm/venv/bin/python /opt/vllm/metrics_exporter.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=metrics-exporter
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/opt/vllm/config/env
+
+[Install]
+WantedBy=multi-user.target

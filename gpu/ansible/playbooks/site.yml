@@ -1,0 +1,20 @@
+- name: Setup GPU VM for vLLM with observability
+  hosts: gpu
+  gather_facts: true
+  vars_files:
+    - ../vault/vault.yml
+  vars:
+    obs_otlp_endpoint: "{{ ansible_env.OBS_OTLP_ENDPOINT | default('obs-vm:4317') }}"
+    vllm_port: "{{ ansible_env.VLLM_PORT | default('8000') }}"
+
+  roles:
+    - gpu_setup
+
+  post_tasks:
+    - name: Display setup completion
+      ansible.builtin.debug:
+        msg: |
+          GPU VM setup completed!
+          - vLLM will be available on port {{ vllm_port }}
+          - Metrics sent to OBS: {{ obs_otlp_endpoint }}
+          - Model: {{ vault_model_name | default('default-model') }}

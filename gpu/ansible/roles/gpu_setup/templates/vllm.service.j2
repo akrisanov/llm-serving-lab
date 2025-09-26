@@ -1,0 +1,30 @@
+[Unit]
+Description=vLLM OpenAI API Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=vllm
+Group=vllm
+WorkingDirectory=/opt/vllm
+ExecStart=/opt/vllm/start.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vllm
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=TORCH_COMPILE_DISABLE=1
+Environment=VLLM_DISABLE_COMPILATION_CACHE=1
+Environment=VLLM_USE_TORCH_COMPILE=0
+EnvironmentFile=-/opt/vllm/config/env
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=30G
+
+[Install]
+WantedBy=multi-user.target

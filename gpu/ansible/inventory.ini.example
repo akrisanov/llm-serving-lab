@@ -1,0 +1,8 @@
+[gpu]
+gpu-vm ansible_host=X.X.X.X ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[gpu:vars]
+# GPU VM specific variables
+gpu_type=t4i
+vllm_port=8000
+obs_otlp_endpoint=obs-vm-ip:4317
