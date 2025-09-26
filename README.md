@@ -1,6 +1,23 @@
 # llm-serving-lab
 
-A long-term lab for **LLM serving experiments**: from## Architecture Overview
+A long-term lab for **LLM serving experiments**: from baselines to multi-GPU scalin## Research Notes
+
+- Week-specific deliverables (e.g. "Week 1: Repo, Baseline, Metrics plumbing") live under `notes/`.
+- Performance notes are tracked in markdown alongside raw JSON run logs.
+- Experimental findings and weekly deliverables are tracked in the `notes/` directory.metrics logged
+  into ClickHouse and visualized in Grafana.
+
+## Purpose
+
+This repository provides **production-ready infrastructure** for LLM serving experiments with comprehensive monitoring:
+
+- **Automated Infrastructure**: Terraform + Ansible for GPU VMs and observability stack
+- **Pre-configured vLLM**: Ready-to-use inference server with Mistral-7B-Instruct model
+- **Full Observability**: GPU metrics, system monitoring, and API analytics in Grafana
+- **Scalable Foundation**: From single-node baselines to multi-GPU experiments
+- **Research-Ready**: Structured environment for AI infrastructure engineering experiments
+
+## Architecture Overview
 
 The lab consists of two main components:
 
@@ -24,22 +41,7 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 2. See [gpu/README.md](gpu/README.md) for GPU infrastructure setup
 3. Both use standardized make commands for easy management
 
-## Research Notes
-
-Experimental findings and weekly deliverables are tracked in `notes/` directory.selines to multi-GPU scaling,
-with metrics logged into ClickHouse and visualized in Grafana.
-
-## Purpose
-
-This repository provides **production-ready infrastructure** for LLM serving experiments with comprehensive monitoring:
-
-- **Automated Infrastructure**: Terraform + Ansible for GPU VMs and observability stack
-- **Pre-configured vLLM**: Ready-to-use inference server with Mistral-7B-Instruct model
-- **Full Observability**: GPU metrics, system monitoring, and API analytics in Grafana
-- **Scalable Foundation**: From single-node baselines to multi-GPU experiments
-- **Research-Ready**: Structured environment for AI infrastructure engineering experiments
-
-## Repository layout
+## Repository Layout
 
 ```text
 llm-serving-lab/
@@ -96,12 +98,16 @@ llm-serving-lab/
 
 See individual README files for detailed instructions.
 
-## Observability stack
+## Observability Stack
 
 All metrics/logs are collected off the GPU VM into a dedicated **Observability VM**.
 This VM runs ClickHouse, Grafana, and an OpenTelemetry Collector (gateway).
 
 See [obs/README.md](obs/README.md) for Terraform + Ansible setup instructions.
+
+## Research Notes
+
+Experimental findings and weekly deliverables are tracked in the `notes/` directory.
 
 ## Notes
 
