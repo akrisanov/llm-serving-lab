@@ -20,7 +20,7 @@
     name: ubuntu
     groups: docker
     append: true
-  notify: restart ssh connection
+  notify: Restart ssh connection
 
 - name: Try install docker compose plugin via apt
   ansible.builtin.apt:

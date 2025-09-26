@@ -5,6 +5,12 @@ datasources:
     access: proxy
     isDefault: true
     editable: true
+    url: http://clickhouse:{{ch_http_port}}
     jsonData:
-      server: "http://clickhouse:8123"
-      defaultDatabase: "${CH_DB}"
+      host: clickhouse
+      port: {{ch_http_port}}
+      protocol: http
+      username: {{ch_user}}
+      defaultDatabase: {{ch_db}}
+    secureJsonData:
+      password: {{ch_password}}

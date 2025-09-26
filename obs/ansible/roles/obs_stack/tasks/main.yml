@@ -34,7 +34,7 @@
     group: ubuntu
 
 - name: Ship Grafana datasource provisioning
-  ansible.builtin.copy:
+  ansible.builtin.template:
     src: "{{ config_path | default(playbook_dir + '/../../config') }}/grafana/provisioning-datasource.yaml"
     dest: /opt/obs/grafana/provisioning/datasources/clickhouse.yaml
     mode: "0644"

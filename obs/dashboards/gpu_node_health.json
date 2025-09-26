@@ -1,28 +1,178 @@
 {
-    "title": "GPU Node Health (Starter)",
+    "id": null,
+    "title": "GPU Node Health",
+    "tags": [
+        "gpu",
+        "monitoring"
+    ],
+    "timezone": "browser",
     "time": {
-        "from": "now-6h",
+        "from": "now-1h",
         "to": "now"
     },
+    "refresh": "30s",
+    "schemaVersion": 39,
     "panels": [
         {
+            "id": 1,
             "title": "GPU Utilization (%)",
             "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
             "targets": [
                 {
-                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='gpu_utilization' ORDER BY time"
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_utilization' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
                 }
-            ]
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "min": 0,
+                    "max": 100,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 1,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "auto",
+                        "pointSize": 5
+                    }
+                }
+            }
         },
         {
-            "title": "GPU Memory Used (bytes)",
+            "id": 2,
+            "title": "GPU Memory Used (GB)",
             "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
             "targets": [
                 {
-                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='gpu_memory_used_bytes' ORDER BY time"
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value / 1024 / 1024 / 1024 as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_memory_used' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
                 }
-            ]
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "decbytes",
+                    "min": 0,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 1,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "auto",
+                        "pointSize": 5
+                    }
+                }
+            }
+        },
+        {
+            "id": 3,
+            "title": "GPU Temperature (°C)",
+            "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_temperature' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "celsius",
+                    "min": 0,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 1,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "auto",
+                        "pointSize": 5
+                    }
+                }
+            }
+        },
+        {
+            "id": 4,
+            "title": "GPU Power Draw (W)",
+            "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_power_draw' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "watt",
+                    "min": 0,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 1,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "auto",
+                        "pointSize": 5
+                    }
+                }
+            }
         }
-    ],
-    "schemaVersion": 39
+    ]
 }

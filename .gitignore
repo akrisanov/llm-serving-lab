@@ -57,6 +57,9 @@ crash.*.log
 **/.ansible/
 **/site.retry
 **/group_vars/*/vault.yml
+**/vault/vault.yml
+!**/vault/vault.yml.example
+**/.vault_pass
 
 # SSH keys
 *.pem

@@ -1,0 +1,335 @@
+{
+    "id": null,
+    "title": "vLLM API Monitoring",
+    "tags": [
+        "vllm",
+        "api",
+        "llm"
+    ],
+    "timezone": "browser",
+    "time": {
+        "from": "now-2h",
+        "to": "now"
+    },
+    "refresh": "30s",
+    "schemaVersion": 39,
+    "panels": [
+        {
+            "id": 1,
+            "title": "GPU Utilization During Inference",
+            "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_utilization' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "min": 0,
+                    "max": 100,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 2,
+                        "fillOpacity": 30,
+                        "gradientMode": "opacity",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "never",
+                        "pointSize": 5
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 50
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 2,
+            "title": "GPU Memory Usage",
+            "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value / 1024 / 1024 / 1024 as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_memory_used' ORDER BY TimeUnix",
+                    "refId": "A",
+                    "format": 1
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "decbytes",
+                    "min": 0,
+                    "max": 24,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 2,
+                        "fillOpacity": 30,
+                        "gradientMode": "opacity",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "never",
+                        "pointSize": 5
+                    }
+                }
+            }
+        },
+        {
+            "id": 3,
+            "title": "GPU Temperature",
+            "type": "stat",
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 0,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_temperature' ORDER BY TimeUnix DESC LIMIT 1",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "celsius",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 70
+                            },
+                            {
+                                "color": "red",
+                                "value": 85
+                            }
+                        ]
+                    },
+                    "custom": {
+                        "displayMode": "basic",
+                        "placement": "bottom"
+                    }
+                }
+            }
+        },
+        {
+            "id": 4,
+            "title": "GPU Power Draw",
+            "type": "stat",
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 6,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_power_draw' ORDER BY TimeUnix DESC LIMIT 1",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "watt",
+                    "custom": {
+                        "displayMode": "basic",
+                        "placement": "bottom"
+                    }
+                }
+            }
+        },
+        {
+            "id": 5,
+            "title": "Model Information",
+            "type": "table",
+            "gridPos": {
+                "h": 4,
+                "w": 12,
+                "x": 12,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT 'Mistral-7B-Instruct-v0.3' as model, 'Loaded and Ready' as status, 'OpenAI Compatible' as api_type, '2048' as max_length",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "options": {
+                "mode": "table"
+            }
+        },
+        {
+            "id": 6,
+            "title": "GPU Memory Utilization %",
+            "type": "gauge",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 12
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT (gpu_used.Value / gpu_total.Value) * 100 as value FROM (SELECT Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_memory_used' ORDER BY TimeUnix DESC LIMIT 1) as gpu_used CROSS JOIN (SELECT Value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_memory_total' ORDER BY TimeUnix DESC LIMIT 1) as gpu_total",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "min": 0,
+                    "max": 100,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 70
+                            },
+                            {
+                                "color": "red",
+                                "value": 90
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 7,
+            "title": "Power & Temperature Trend",
+            "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 16,
+                "x": 8,
+                "y": 12
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT TimeUnix as time, Value as value, 'Temperature' as metric FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_temperature' UNION ALL SELECT TimeUnix as time, Value as value, 'Power Draw' as metric FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_power_draw' ORDER BY time",
+                    "refId": "A",
+                    "format": 1
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 1,
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "never",
+                        "pointSize": 5
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Temperature"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "celsius"
+                            },
+                            {
+                                "id": "custom.axisPlacement",
+                                "value": "right"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Power Draw"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "watt"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

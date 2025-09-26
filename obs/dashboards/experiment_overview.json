@@ -1,28 +1,205 @@
 {
-    "title": "Experiment Overview (Starter)",
+    "id": null,
+    "title": "Experiment Overview",
+    "tags": [
+        "experiments",
+        "llm",
+        "vllm"
+    ],
+    "timezone": "browser",
     "time": {
-        "from": "now-6h",
+        "from": "now-4h",
         "to": "now"
     },
+    "refresh": "1m",
+    "schemaVersion": 39,
     "panels": [
         {
-            "title": "Tokens per second",
+            "id": 1,
+            "title": "GPU Utilization Trend (1h Average)",
             "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
             "targets": [
                 {
-                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='experiment_tokens_per_second' ORDER BY time"
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT toStartOfInterval(TimeUnix, INTERVAL 1 MINUTE) as time, avg(Value) as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_utilization' GROUP BY time ORDER BY time",
+                    "refId": "A",
+                    "format": 1
                 }
-            ]
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "min": 0,
+                    "max": 100,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 2,
+                        "fillOpacity": 20,
+                        "gradientMode": "opacity",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "never",
+                        "pointSize": 5
+                    }
+                }
+            }
         },
         {
-            "title": "Latency p95 (ms)",
+            "id": 2,
+            "title": "GPU Memory Usage Trend (1h Average)",
             "type": "timeseries",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
             "targets": [
                 {
-                    "query": "SELECT timestamp AS time, value FROM otel_metrics_metrics WHERE metric_name='request_latency_ms_p95' ORDER BY time"
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT toStartOfInterval(TimeUnix, INTERVAL 1 MINUTE) as time, avg(Value / 1024 / 1024 / 1024) as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_memory_used' GROUP BY time ORDER BY time",
+                    "refId": "A",
+                    "format": 1
                 }
-            ]
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "decbytes",
+                    "min": 0,
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "linear",
+                        "barAlignment": 0,
+                        "lineWidth": 2,
+                        "fillOpacity": 20,
+                        "gradientMode": "opacity",
+                        "spanNulls": false,
+                        "insertNulls": false,
+                        "showPoints": "never",
+                        "pointSize": 5
+                    }
+                }
+            }
+        },
+        {
+            "id": 3,
+            "title": "Current GPU Metrics (Last 5 min)",
+            "type": "stat",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT 'Utilization' as metric, Value as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_utilization' ORDER BY TimeUnix DESC LIMIT 1",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "custom": {
+                        "displayMode": "list",
+                        "placement": "bottom"
+                    }
+                }
+            }
+        },
+        {
+            "id": 4,
+            "title": "Current Temperature",
+            "type": "stat",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 8,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT 'Temperature' as metric, Value as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_temperature' ORDER BY TimeUnix DESC LIMIT 1",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "celsius",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "custom": {
+                        "displayMode": "list",
+                        "placement": "bottom"
+                    }
+                }
+            }
+        },
+        {
+            "id": 5,
+            "title": "Current Power Draw",
+            "type": "stat",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "grafana-clickhouse-datasource"
+                    },
+                    "queryType": "",
+                    "rawSql": "SELECT 'Power' as metric, Value as value FROM otel_metrics.otel_metrics_gauge WHERE MetricName = 'gpu_0_power_draw' ORDER BY TimeUnix DESC LIMIT 1",
+                    "refId": "A",
+                    "format": 0
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "watt",
+                    "custom": {
+                        "displayMode": "list",
+                        "placement": "bottom"
+                    }
+                }
+            }
         }
-    ],
-    "schemaVersion": 39
+    ]
 }
