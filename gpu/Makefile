@@ -46,7 +46,7 @@ fmt: ## Format Terraform files
 install: ## Install Ansible dependencies
 	cd ansible && ansible-galaxy install -r requirements.yml
 
-deploy: ## Deploy GPU services with Ansible
+deploy: set-obs-endpoint ## Deploy GPU services with Ansible (auto-sets OBS endpoint)
 	@if [ -f ansible/inventory.ini ]; then \
 		cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml; \
 	else \
@@ -82,6 +82,14 @@ ssh: ## SSH to GPU server
 logs: ## Show vLLM service logs on remote host
 	@if [ -f ansible/inventory.ini ]; then \
 		cd ansible && ansible -i inventory.ini gpu -m shell -a "journalctl -u vllm -f --no-pager -n 50"; \
+	else \
+		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
+		exit 1; \
+	fi
+
+logs-metrics: ## Show metrics exporter logs on remote host
+	@if [ -f ansible/inventory.ini ]; then \
+		cd ansible && ansible -i inventory.ini gpu -m shell -a "journalctl -u metrics-exporter -f --no-pager -n 20"; \
 	else \
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
 		exit 1; \
@@ -168,6 +176,16 @@ test-obs: ## Test OBS connectivity
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
 		exit 1; \
 	fi
+
+restart-metrics: ## Restart metrics exporter service
+	@if [ -f ansible/inventory.ini ]; then \
+		cd ansible && ansible -i inventory.ini gpu -m shell -a "sudo systemctl restart metrics-exporter.service" --vault-password-file vault/.vault_pass; \
+		echo "Metrics exporter restarted. Check logs with: make logs-metrics"; \
+	else \
+		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
+		exit 1; \
+	fi
+
 
 # Vault management commands
 vault-create: ## Create new encrypted vault file

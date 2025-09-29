@@ -4,7 +4,7 @@
   vars_files:
     - ../vault/vault.yml
   vars:
-    obs_otlp_endpoint: "{{ ansible_env.OBS_OTLP_ENDPOINT | default('obs-vm:4317') }}"
+    obs_otlp_endpoint: "{{ otel_endpoint }}"
     vllm_port: "{{ ansible_env.VLLM_PORT | default('8000') }}"
 
   roles:
