@@ -1,11 +1,41 @@
 # llm-serving-lab
 
-A long-term lab for **LLM serving experiments**: from baselines to multi-GPU scalin## Research Notes
+A long-term lab for **LLM serving experiments**: from baselines to multi-GPU scaling with comprehensive monitoring.
 
-- Week-specific deliverables (e.g. "Week 1: Repo, Baseline, Metrics plumbing") live under `notes/`.
-- Performance notes are tracked in markdown alongside raw JSON run logs.
-- Experimental findings and weekly deliverables are tracked in the `notes/` directory.metrics logged
-  into ClickHouse and visualized in Grafana.
+## Reliability## Research Notes
+
+- Week-specific deliverables (e.g. "Week 1: Repo, Baseline, Metrics plumbing") live under `notes/`
+- Performance notes are tracked in markdown alongside raw JSON run logs
+- Experimental findings and weekly deliverables are documented for research purposess
+
+Both infrastructure stacks include reliability features:
+
+**Automated Health Checks:**
+
+- Services are started in dependency order with health checks
+- Built-in retry logic and timeout handling
+- Automatic validation after deployment
+
+**Robust Deployment:**
+
+```bash
+# Reliable deployment commands for both stacks
+make deploy            # Deploy with health checks
+make validate          # Quick validation of all services
+# (obs only: make restart-services)
+```
+
+**Troubleshooting Support:**
+
+```bash
+# Common debugging commands
+make ping             # Test connectivity
+make logs             # View service logs
+make status-services  # Check service status
+make ssh              # Direct server access
+```
+
+See individual README files for detailed troubleshooting guides.
 
 ## Purpose
 
@@ -30,16 +60,20 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 
 - **Automated Deployment**: Complete infrastructure setup with `make deploy-all`
 - **Production Ready**: vLLM service with systemd management and auto-restart
+- **Model Ready**: Pre-configured Mistral-7B-Instruct (first startup takes 10-15 minutes for model loading)
 - **Comprehensive Monitoring**: GPU utilization, memory usage, API metrics
 - **Interactive Dashboards**: Real-time Grafana visualizations
-- **Secure by Default**: VPC isolation, restricted access, encrypted secrets
+- **Secure by Default**: VPC isolation, restricted access, encrypted secrets, API authentication
 - **Cost Optimized**: Easy VM start/stop, resource right-sizing
 
 ## Getting Started
 
-1. See [obs/README.md](obs/README.md) for observability stack setup
-2. See [gpu/README.md](gpu/README.md) for GPU infrastructure setup
-3. Both use standardized make commands for easy management
+**Important:** Deploy in this order as GPU stack depends on OBS network:
+
+1. **Deploy OBS stack first:** See [obs/README.md](obs/README.md) for observability stack setup
+2. **Update GPU network config:** Get network IDs from OBS and update GPU terraform.tfvars
+3. **Deploy GPU stack:** See [gpu/README.md](gpu/README.md) for GPU infrastructure setup
+4. **Wait for model loading:** First vLLM startup takes 10-15 minutes for model download and loading
 
 ## Repository Layout
 
@@ -76,21 +110,34 @@ llm-serving-lab/
    make deploy-all
    ```
 
-2. **Deploy GPU Infrastructure:**
+2. **Get OBS network configuration:**
+
+   ```bash
+   cd obs/terraform/
+   terraform output obs_network_id obs_subnet_id
+   ```
+
+3. **Deploy GPU Infrastructure:**
 
    ```bash
    cd gpu/
    # Copy and configure example files
    make copy-examples
-   # Edit terraform.tfvars and inventory.ini with your values
+   # Edit terraform.tfvars with your values AND update obs_network_id/obs_subnet_id from step 2
    make deploy-all
    ```
 
-3. **Monitor and Manage:**
+4. **Monitor Model Loading and Manage:**
 
    ```bash
+   # Wait for model loading (first startup takes 10-15 minutes)
+   cd gpu/ && make logs  # Monitor loading progress
+
+   # Check when API is ready (look for "Supported_tasks: ['generate']" in logs)
+   # Test API with: make ssh then curl with proper auth (see GPU README)
+
    # Check GPU status
-   cd gpu/ && make gpu-info
+   make gpu-info
 
    # View Grafana dashboards
    # Access http://<obs-vm-ip>:3000

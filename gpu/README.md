@@ -52,7 +52,7 @@ The infrastructure includes:
 3. **Ansible** >= 2.9 for configuration management
 4. **Make** utility (standard on macOS/Linux)
 5. **SSH key pair** for VM access
-6. **Observability stack** deployed (optional, for metrics collection)
+6. **Observability stack** deployed first (required for network configuration)
 
 > **💡 Tip**: All operations are managed through `make` commands - no need to remember complex terraform or ansible commands!
 
@@ -92,6 +92,12 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
 Edit `terraform/terraform.tfvars` with your values:
 
+**⚠️ Important:** Get network IDs from deployed OBS stack first:
+
+```bash
+cd ../obs/terraform && terraform output obs_network_id obs_subnet_id
+```
+
 ```hcl
 # Yandex Cloud credentials
 yc_token     = "ya29.your_token"
@@ -101,6 +107,10 @@ yc_folder_id = "b1gxxxxxxxxxxxxx"
 # Security
 my_ip          = "203.0.113.1/32"  # Your public IP
 ssh_public_key = "ssh-ed25519 AAAAC3Nz... your_key"
+
+# Network settings from OBS (REQUIRED - get from OBS terraform output)
+obs_network_id = "enpxxxxxxxxxxxxx"  # From OBS stack output
+obs_subnet_id  = "e9bxxxxxxxxxxxxx"  # From OBS stack output
 
 # GPU configuration
 gpu_type  = "t4i"    # or "a100" for larger models
@@ -144,6 +154,15 @@ obs_otlp_endpoint = "obs-vm-ip:4317"  # Your OBS stack endpoint
 |--------------------|------------------------------------|
 | `gpu_public_ip`    | Public IP address of the GPU VM    |
 | `gpu_internal_ip`  | Internal IP address within VPC     |
+
+**Note**: The vLLM API key is automatically generated and stored in the Ansible vault file. To retrieve it after deployment:
+
+```bash
+make vault-view  # View vault contents including API key
+# Or check on the VM directly:
+make ssh
+sudo systemctl status vllm.service  # API key visible in command line
+```
 
 ## Management Commands
 
@@ -199,14 +218,50 @@ After deploying with `make deploy-all`, the VM comes with vLLM pre-installed and
 1. **Check deployment status**: `make status-services`
 2. **Check GPU status**: `make gpu-info`
 3. **Configure OTLP metrics export**: `make set-obs-endpoint`
-4. **Start vLLM service**: `make ssh` then `sudo systemctl start vllm`
+4. **Wait for model loading**: The first startup takes 10-15 minutes (see below)
 5. **Monitor logs**: `make logs`
+
+### ⏳ Model Loading Process
+
+**Important**: The first time vLLM starts, it needs to download and load the model into GPU memory:
+
+- **Download time**: 5-10 minutes (downloading ~13GB Mistral-7B from HuggingFace)
+- **Loading time**: 2-5 minutes (loading model weights into GPU memory)
+- **Total first startup**: 10-15 minutes typically
+
+**What to expect during first startup:**
+
+```bash
+# Check if model is still loading
+make logs
+
+# You'll see logs like:
+# "Starting to load model mistralai/Mistral-7B-Instruct-v0.3..."
+# "Loading weights took 142.89 seconds"
+# "Model loading took 13.5084 GiB and 646.147558 seconds"
+
+# API will be ready when you see:
+# "Supported_tasks: ['generate']"
+```
+
+**Testing API availability:**
+
+```bash
+# Check if API is responding (requires auth)
+ssh -i ~/.ssh/planfact ubuntu@<GPU_VM_IP> \
+  "curl -s -H 'Authorization: Bearer <API_KEY>' http://localhost:8000/v1/models"
+
+# Should return JSON with model info when ready
+# Returns {"error":"Unauthorized"} without proper auth
+# Times out if model is still loading
+```
 
 The vLLM service is pre-configured to:
 
 - Load Mistral-7B-Instruct-v0.3 model by default
 - Listen on port 8000 with OpenAI-compatible API
-- Export GPU metrics to your observability stack
+- **Require Bearer token authorization** for API access
+- Export GPU metrics to your observability stack  
 - Run as systemd service with automatic restart
 
 To customize the model or configuration:
@@ -239,7 +294,49 @@ sudo nano /opt/vllm/start_vllm.sh
 
 ### Common Issues
 
-1. **GPU not detected**:
+1. **API timeouts or "Connection refused" errors**:
+
+   **Problem:** `curl` commands timeout or return connection errors when testing vLLM API
+
+   **Cause:** Model is still downloading/loading (especially on first startup)
+
+   **Solution:**
+
+   ```bash
+   # Check if vLLM service is running
+   make status-services
+
+   # Monitor loading progress
+   make logs
+
+   # Look for these key log messages:
+   # - "Starting to load model..." (download starting)
+   # - "Loading weights took X seconds" (model loaded)
+   # - "Supported_tasks: ['generate']" (API ready)
+
+   # Test API only after seeing "Supported_tasks" in logs
+   # Use correct port (8000, not 8001) and authorization:
+   ssh -i ~/.ssh/planfact ubuntu@<IP> \
+     "curl -H 'Authorization: Bearer <API_KEY>' http://localhost:8000/v1/models"
+   ```
+
+2. **Network configuration errors** (Missing required argument "network_id"):
+
+   **Problem:** Terraform fails with "Missing required argument" for network_id
+
+   **Solution:** Update network IDs from OBS stack:
+
+   ```bash
+   # Get current network IDs from OBS
+   cd ../obs/terraform && terraform output obs_network_id obs_subnet_id
+
+   # Update your terraform.tfvars with the output values
+   vim terraform/terraform.tfvars
+   # Update: obs_network_id = "your_network_id"
+   # Update: obs_subnet_id = "your_subnet_id"
+   ```
+
+3. **GPU not detected**:
 
    ```bash
    # Connect to VM and check GPU
@@ -250,7 +347,7 @@ sudo nano /opt/vllm/start_vllm.sh
    make gpu-info
    ```
 
-2. **Configuration issues**:
+4. **Configuration issues**:
 
    ```bash
    # Check terraform configuration
@@ -260,7 +357,7 @@ sudo nano /opt/vllm/start_vllm.sh
    make status
    ```
 
-3. **Service problems**:
+5. **Service problems**:
 
    ```bash
    # Check all services
@@ -273,7 +370,7 @@ sudo nano /opt/vllm/start_vllm.sh
    make logs
    ```
 
-4. **Network issues**:
+6. **Network issues**:
    - Verify security group rules with `make status`
    - Check your public IP hasn't changed
    - Test OBS connectivity with `make test-obs`

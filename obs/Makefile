@@ -33,7 +33,7 @@ destroy: ## Destroy Terraform infrastructure
 status: ## Show Terraform state
 	cd terraform && terraform show
 
-validate: ## Validate Terraform configuration
+validate-terraform: ## Validate Terraform configuration
 	cd terraform && terraform validate
 
 fmt: ## Format Terraform files
@@ -97,9 +97,20 @@ vault-password: ## Create vault password file for automatic authentication
 test: ## Run connectivity and service tests
 	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --tags verify
 
+validate: ## Validate all services are healthy
+	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --tags validate
+
+restart-services: ## Restart all services (safer than full redeploy)
+	@if [ -f ansible/inventory.ini ]; then \
+		cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose restart"; \
+	else \
+		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
+		exit 1; \
+	fi
+
 ssh: ## SSH to obs server
 	@if [ -f terraform/terraform.tfstate ]; then \
-		cd terraform && terraform output -raw obs_vm_ip | xargs -I {} ssh ubuntu@{}; \
+		cd terraform && terraform output -raw obs_public_ip | xargs -I {} ssh ubuntu@{}; \
 	else \
 		echo "Error: No Terraform state found. Run 'make apply' first."; \
 		exit 1; \

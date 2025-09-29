@@ -154,7 +154,7 @@
 - name: Create vLLM startup script
   ansible.builtin.template:
     src: vllm_start.sh.j2
-    dest: /opt/vllm/start_vllm.sh
+    dest: /opt/vllm/start.sh
     owner: vllm
     group: vllm
     mode: "0755"

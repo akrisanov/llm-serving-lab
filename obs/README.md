@@ -220,6 +220,15 @@ make ssh
   - gRPC: `<obs_public_ip>:4317`
   - HTTP: `<obs_public_ip>:4318`
 
+**For GPU stack deployment:**
+
+```bash
+# Get network configuration needed for GPU stack
+terraform output obs_network_id obs_subnet_id
+
+# Use these values in gpu/terraform/terraform.tfvars
+```
+
 ## Cleanup
 
 To avoid unnecessary costs, you can stop services and destroy infrastructure:
@@ -245,24 +254,74 @@ yc compute instance start --name obs-vm
 
 ## Troubleshooting
 
-**Common issues and solutions:**
+### Deployment Reliability
+
+The `make deploy` command includes reliability features to prevent common failures:
+
+**Automatic Health Checks:**
+
+- ClickHouse is started first and health-checked before other services
+- Built-in retry logic with 24 attempts (2 minutes total) for ClickHouse to become healthy
+- Automatic validation of all services after deployment
+
+**Error Handling:**
 
 ```bash
-# Check configuration before applying
-make check-config
-
-# View detailed logs
-make logs
-
-# Test connectivity
-make ping
-
-# Clean local cache and restart
-make clean
-make setup
+make deploy            # Reliable deployment with health checks
+make validate          # Quick validation of all services
+make restart-services  # Restart services without full redeploy
 ```
 
-**Manual operations (if needed):**
+### Common Issues and Solutions
+
+**SSH Connection Issues:**
+
+```bash
+# Host key verification failed
+# Solution: SSH keys are automatically managed, but if issues persist:
+make ping                      # Test basic connectivity
+ssh-keygen -R <obs_public_ip>  # Remove old host key if needed
+```
+
+**ClickHouse Startup Issues:**
+
+```bash
+# If ClickHouse takes too long to start:
+make ssh           # Connect to server
+docker compose ps  # Check container status
+docker compose logs clickhouse  # View ClickHouse logs
+```
+
+**Ansible Vault Issues:**
+
+```bash
+# Vault password file issues:
+make vault-password  # Recreate vault password file
+chmod 600 ansible/group_vars/.vault_pass  # Fix permissions
+```
+
+**Service Health Issues:**
+
+```bash
+# Validate all services are running correctly:
+make validate      # Run health checks
+make logs         # View service logs
+make status-services  # Check service status
+```
+
+**Recovery Commands:**
+
+```bash
+# If deployment partially fails:
+make restart-services  # Safer than full redeploy
+make clean && make setup && make deploy-all  # Full reset
+
+# Check configuration without applying changes:
+make config       # Dry-run check
+make check-config # Validate all configs
+```
+
+**Manual Operations:**
 
 All Makefile commands use standard Terraform and Ansible underneath, so you can always fall back to
 manual commands in the respective directories if needed.

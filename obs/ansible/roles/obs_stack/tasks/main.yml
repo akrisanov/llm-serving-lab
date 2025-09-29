@@ -92,7 +92,28 @@
       OTEL_GATEWAY_OTLP_GRPC_PORT={{ otel_grpc_port }}
       OTEL_GATEWAY_OTLP_HTTP_PORT={{ otel_http_port }}
 
-- name: Bring up the stack
+- name: Start ClickHouse first
+  ansible.builtin.shell: |
+    cd /opt/obs
+    sudo -u ubuntu docker compose up -d clickhouse
+  args:
+    chdir: /opt/obs
+  register: obs_stack_clickhouse_start_result
+  changed_when: "'Started' in obs_stack_clickhouse_start_result.stderr or 'Created' in obs_stack_clickhouse_start_result.stderr"
+  tags: [deploy]
+
+- name: Wait for ClickHouse to become healthy
+  ansible.builtin.uri:
+    url: "http://localhost:8123/ping"
+    method: GET
+    status_code: 200
+  register: obs_stack_clickhouse_health_wait
+  retries: 24
+  delay: 5
+  until: obs_stack_clickhouse_health_wait is succeeded
+  tags: [deploy]
+
+- name: Bring up the remaining services
   ansible.builtin.shell: |
     cd /opt/obs
     sudo -u ubuntu docker compose up -d
@@ -102,3 +123,39 @@
   changed_when: "'Started' in obs_stack_docker_compose_result.stderr or 'Created' in obs_stack_docker_compose_result.stderr"
   tags: [deploy]
   notify: restart stack
+
+- name: Check final services status
+  ansible.builtin.shell: |
+    cd /opt/obs
+    sleep 10
+    sudo -u ubuntu docker compose ps
+  args:
+    chdir: /opt/obs
+  register: obs_stack_final_services_status
+  changed_when: false
+  tags: [deploy]
+
+- name: Display services status
+  ansible.builtin.debug:
+    msg: "{{ obs_stack_final_services_status.stdout_lines }}"
+  tags: [deploy]
+
+- name: Validate ClickHouse is accessible
+  ansible.builtin.uri:
+    url: "http://localhost:8123/ping"
+    method: GET
+    status_code: 200
+  register: obs_stack_clickhouse_validation
+  retries: 5
+  delay: 5
+  tags: [deploy, validate]
+
+- name: Validate Grafana is accessible
+  ansible.builtin.uri:
+    url: "http://localhost:3000/api/health"
+    method: GET
+    status_code: 200
+  register: obs_stack_grafana_validation
+  retries: 5
+  delay: 5
+  tags: [deploy, validate]
