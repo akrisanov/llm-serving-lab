@@ -2,11 +2,17 @@
 
 A long-term lab for **LLM serving experiments**: from baselines to multi-GPU scaling with comprehensive monitoring.
 
-## Reliability## Research Notes
+## Purpose
 
-- Week-specific deliverables (e.g. "Week 1: Repo, Baseline, Metrics plumbing") live under `notes/`
-- Performance notes are tracked in markdown alongside raw JSON run logs
-- Experimental findings and weekly deliverables are documented for research purposess
+This repository provides **production-ready infrastructure** for LLM serving experiments with comprehensive monitoring:
+
+- **Automated Infrastructure**: Terraform + Ansible for GPU VMs and observability stack
+- **Pre-configured vLLM**: Ready-to-use inference server with Mistral-7B-Instruct model
+- **Full Observability**: GPU metrics, system monitoring, and API analytics in Grafana
+- **Scalable Foundation**: From single-node baselines to multi-GPU experiments
+- **Research-Ready**: Structured environment for AI infrastructure engineering experiments
+
+## Reliability Features
 
 Both infrastructure stacks include reliability features:
 
@@ -36,16 +42,6 @@ make ssh              # Direct server access
 ```
 
 See individual README files for detailed troubleshooting guides.
-
-## Purpose
-
-This repository provides **production-ready infrastructure** for LLM serving experiments with comprehensive monitoring:
-
-- **Automated Infrastructure**: Terraform + Ansible for GPU VMs and observability stack
-- **Pre-configured vLLM**: Ready-to-use inference server with Mistral-7B-Instruct model
-- **Full Observability**: GPU metrics, system monitoring, and API analytics in Grafana
-- **Scalable Foundation**: From single-node baselines to multi-GPU experiments
-- **Research-Ready**: Structured environment for AI infrastructure engineering experiments
 
 ## Architecture Overview
 
