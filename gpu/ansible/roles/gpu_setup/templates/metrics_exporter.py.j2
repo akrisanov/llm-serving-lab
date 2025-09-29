@@ -1,202 +1,23 @@
 #!/usr/bin/env python3
 """
-GPU and system metrics exporter for OpenTelemetry.
-Sends metrics to OBS stack via OTLP.
+GPU and system metrics exporter - Ansible deployment wrapper.
+This is a thin wrapper that configures and runs the metrics exporter from src/.
 """
 
+import sys
 import os
-import time
-import logging
-from typing import Dict, Any
-import psutil
-import requests
-from opentelemetry import metrics
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-try:
-    import pynvml
-    NVIDIA_AVAILABLE = True
-except ImportError:
-    NVIDIA_AVAILABLE = False
-    print("Warning: pynvml not available, GPU metrics will not be collected")
+# Add the source directory to Python path
+sys.path.insert(0, '/opt/llm-serving-lab/src')
 
-# Configuration
-OBS_OTLP_ENDPOINT = os.getenv('OBS_OTLP_ENDPOINT', '{{ obs_otlp_endpoint }}')
-VLLM_PORT = os.getenv('VLLM_PORT', '{{ vllm_port }}')
-COLLECT_INTERVAL = int(os.getenv('METRICS_INTERVAL', '30'))  # seconds
+from monitoring.metrics_exporter import main
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configuration from Ansible variables
+os.environ['OBS_OTLP_ENDPOINT'] = '{{ obs_otlp_endpoint }}'
+os.environ['VLLM_PORT'] = '{{ vllm_port }}'
+os.environ['METRICS_INTERVAL'] = '30'
+os.environ['GPU_TYPE'] = '{{ gpu_type | default("unknown") }}'
 
-def setup_otel():
-    """Setup OpenTelemetry metrics."""
-    resource = Resource.create({
-        "service.name": "gpu-vm-metrics",
-        "service.version": "1.0.0",
-        "host.name": os.uname().nodename,
-        "gpu.type": "{{ gpu_type | default('unknown') }}",
-    })
-
-    exporter = OTLPMetricExporter(
-        endpoint=f"http://{OBS_OTLP_ENDPOINT}",
-        insecure=True
-    )
-
-    reader = PeriodicExportingMetricReader(
-        exporter=exporter,
-        export_interval_millis=COLLECT_INTERVAL * 1000
-    )
-
-    provider = MeterProvider(resource=resource, metric_readers=[reader])
-    metrics.set_meter_provider(provider)
-
-    return metrics.get_meter("gpu-vm-metrics")
-
-def init_nvidia():
-    """Initialize NVIDIA ML library."""
-    if not NVIDIA_AVAILABLE:
-        return False
-    try:
-        pynvml.nvmlInit()
-        return True
-    except Exception as e:
-        logger.error(f"Failed to initialize NVIDIA ML: {e}")
-        return False
-
-def get_gpu_metrics() -> Dict[str, Any]:
-    """Get GPU metrics using nvidia-ml-py."""
-    if not NVIDIA_AVAILABLE:
-        return {}
-
-    try:
-        device_count = pynvml.nvmlDeviceGetCount()
-        metrics = {}
-
-        for i in range(device_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-
-            # GPU utilization
-            util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            metrics[f'gpu_{i}_utilization'] = util.gpu
-            metrics[f'gpu_{i}_memory_utilization'] = util.memory
-
-            # Memory info
-            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            metrics[f'gpu_{i}_memory_total'] = mem_info.total
-            metrics[f'gpu_{i}_memory_used'] = mem_info.used
-            metrics[f'gpu_{i}_memory_free'] = mem_info.free
-
-            # Temperature
-            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
-            metrics[f'gpu_{i}_temperature'] = temp
-
-            # Power usage
-            try:
-                power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # Convert to watts
-                metrics[f'gpu_{i}_power_draw'] = power
-            except pynvml.NVMLError:
-                pass  # Power usage not available on all GPUs
-
-        return metrics
-    except Exception as e:
-        logger.error(f"Error collecting GPU metrics: {e}")
-        return {}
-
-def get_system_metrics() -> Dict[str, Any]:
-    """Get system metrics."""
-    metrics = {}
-
-    # CPU metrics
-    metrics['cpu_percent'] = psutil.cpu_percent()
-    metrics['cpu_count'] = psutil.cpu_count()
-
-    # Memory metrics
-    mem = psutil.virtual_memory()
-    metrics['memory_total'] = mem.total
-    metrics['memory_available'] = mem.available
-    metrics['memory_percent'] = mem.percent
-
-    # Disk metrics
-    disk = psutil.disk_usage('/')
-    metrics['disk_total'] = disk.total
-    metrics['disk_used'] = disk.used
-    metrics['disk_percent'] = (disk.used / disk.total) * 100
-
-    # Load average
-    load = psutil.getloadavg()
-    metrics['load_1min'] = load[0]
-    metrics['load_5min'] = load[1]
-    metrics['load_15min'] = load[2]
-
-    return metrics
-
-def get_vllm_metrics() -> Dict[str, Any]:
-    """Get vLLM metrics via HTTP API."""
-    metrics = {}
-    try:
-        response = requests.get(f"http://localhost:{VLLM_PORT}/metrics", timeout=5)
-        if response.status_code == 200:
-            # Parse Prometheus-style metrics
-            lines = response.text.split('\n')
-            for line in lines:
-                if line.startswith('#') or not line.strip():
-                    continue
-                if ' ' in line:
-                    metric_name, value = line.split(' ', 1)
-                    try:
-                        metrics[f'vllm_{metric_name}'] = float(value)
-                    except ValueError:
-                        pass
-    except Exception as e:
-        logger.debug(f"Could not collect vLLM metrics: {e}")
-
-    return metrics
-
-def main():
-    """Main metrics collection loop."""
-    logger.info("Starting GPU VM metrics exporter")
-    logger.info(f"Sending metrics to: {OBS_OTLP_ENDPOINT}")
-    logger.info(f"Collection interval: {COLLECT_INTERVAL}s")
-
-    # Setup OpenTelemetry
-    meter = setup_otel()
-
-    # Initialize NVIDIA
-    nvidia_available = init_nvidia()
-    logger.info(f"NVIDIA GPU support: {'available' if nvidia_available else 'not available'}")
-
-    # Create metric instruments
-    gauges = {}
-
-    while True:
-        try:
-            # Collect all metrics
-            all_metrics = {}
-            all_metrics.update(get_system_metrics())
-            if nvidia_available:
-                all_metrics.update(get_gpu_metrics())
-            all_metrics.update(get_vllm_metrics())
-
-            # Create gauges and set values
-            for metric_name, value in all_metrics.items():
-                if metric_name not in gauges:
-                    gauges[metric_name] = meter.create_gauge(
-                        name=metric_name,
-                        description=f"Metric {metric_name}",
-                        unit="1"
-                    )
-                gauges[metric_name].set(value)
-
-            logger.debug(f"Exported {len(all_metrics)} metrics")
-
-        except Exception as e:
-            logger.error(f"Error in metrics collection: {e}")
-
-        time.sleep(COLLECT_INTERVAL)
 
 if __name__ == "__main__":
     main()

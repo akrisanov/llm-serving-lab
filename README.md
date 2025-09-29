@@ -58,6 +58,8 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 
 ## Key Features
 
+### Infrastructure & Deployment
+
 - **Automated Deployment**: Complete infrastructure setup with `make deploy-all`
 - **Production Ready**: vLLM service with systemd management and auto-restart
 - **Model Ready**: Pre-configured Mistral-7B-Instruct (first startup takes 10-15 minutes for model loading)
@@ -65,6 +67,14 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 - **Interactive Dashboards**: Real-time Grafana visualizations
 - **Secure by Default**: VPC isolation, restricted access, encrypted secrets, API authentication
 - **Cost Optimized**: Easy VM start/stop, resource right-sizing
+
+### Python Development
+
+- **Modular Architecture**: Reusable monitoring modules in `src/`
+- **Local Development**: Full IDE support with type hints and autocompletion
+- **Testing Tools**: CLI script for local metrics testing and debugging
+- **Code Quality**: Ruff integration for consistent formatting and linting
+- **Infrastructure Integration**: Python modules deployed seamlessly via Ansible
 
 ## Getting Started
 
@@ -79,6 +89,14 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 
 ```text
 llm-serving-lab/
+├── src/                   # Python modules for development
+│   ├── monitoring/        # Metrics collection modules
+│   │   ├── metrics_exporter.py   # Main exporter class
+│   │   ├── gpu_metrics.py        # GPU metrics via NVIDIA ML
+│   │   ├── system_metrics.py     # System metrics via psutil
+│   │   └── vllm_metrics.py       # vLLM API metrics
+│   ├── deployment/        # Deployment utilities (planned)
+│   └── utils/             # Common utilities (planned)
 ├── gpu/                   # GPU infrastructure (Terraform + Ansible)
 │   ├── ansible/           # Ansible automation for VM configuration
 │   ├── terraform/         # Infrastructure provisioning
@@ -93,6 +111,8 @@ llm-serving-lab/
 │   └── README.md          # Observability setup instructions
 ├── benchmarks/            # Performance benchmarks and analysis (planned)
 ├── notes/                 # Weekly deliverables and research notes
+├── metrics-cli.py         # CLI tool for local metrics testing
+├── pyproject.toml         # Project dependencies and tool configuration
 └── README.md
 ```
 
@@ -136,20 +156,26 @@ This configuration uses a filesystem mirror for the Yandex Cloud provider, which
 
 ### Development Tools
 
-Run linting and validation:
-
 ```bash
-# Lint Ansible playbooks (from individual directories)
-cd gpu/ && uv run ansible-lint ansible/
-cd obs/ && uv run ansible-lint ansible/
+# Install all dependencies
+uv sync --extra dev --extra monitoring
 
-# Lint YAML files
-uv run yamllint gpu/ansible/ obs/ansible/
+# Infrastructure validation
+cd gpu/ && uv run ansible-lint ansible/      # Lint GPU Ansible
+cd obs/ && uv run ansible-lint ansible/      # Lint OBS Ansible
+uv run yamllint gpu/ansible/ obs/ansible/    # Lint YAML files
 
-# Validate Terraform configurations
+# Terraform validation
 cd gpu/terraform/ && terraform fmt -check && terraform validate
 cd obs/terraform/ && terraform fmt -check && terraform validate
+
+# Python development - see src/README.md for details
+python metrics-cli.py --dry-run --log-level DEBUG  # Test metrics locally
 ```
+
+### Python Module Development
+
+For detailed information about Python modules and development workflow, see [src/README.md](src/README.md).
 
 **Note:** Some ansible-lint errors related to vault files are expected when vault passwords are not available.
 
