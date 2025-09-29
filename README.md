@@ -96,6 +96,63 @@ llm-serving-lab/
 └── README.md
 ```
 
+## Environment Setup
+
+### Prerequisites
+
+- Python 3.13+ (managed with `uv`)
+- Terraform
+- Ansible
+- Docker (for local development)
+
+### Python Environment with uv
+
+Initialize the project environment:
+
+```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install project dependencies
+uv sync
+
+# Activate environment (optional, uv run handles this automatically)
+source .venv/bin/activate
+```
+
+### Terraform Configuration for Russia
+
+**For users in Russia:** Copy the Terraform configuration template to enable local provider mirrors:
+
+```bash
+# Copy template to home directory
+cp config/terraformrc ~/.terraformrc
+
+# Create local provider mirror directory
+mkdir -p ~/.local/terraform-providers
+```
+
+This configuration uses a filesystem mirror for the Yandex Cloud provider, which helps with connectivity issues from Russia.
+
+### Development Tools
+
+Run linting and validation:
+
+```bash
+# Lint Ansible playbooks (from individual directories)
+cd gpu/ && uv run ansible-lint ansible/
+cd obs/ && uv run ansible-lint ansible/
+
+# Lint YAML files
+uv run yamllint gpu/ansible/ obs/ansible/
+
+# Validate Terraform configurations
+cd gpu/terraform/ && terraform fmt -check && terraform validate
+cd obs/terraform/ && terraform fmt -check && terraform validate
+```
+
+**Note:** Some ansible-lint errors related to vault files are expected when vault passwords are not available.
+
 ## Usage
 
 ### Quick Start
