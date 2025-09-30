@@ -36,8 +36,8 @@ Repository = "https://github.com/akrisanov/llm-serving-lab"
 
 # No build system needed - this is a dependency management only project
 
-[tool.uv]
-dev-dependencies = ["ansible-lint>=6.0.0", "yamllint>=1.28.0", "ruff>=0.6.0"]
+[dependency-groups]
+dev = ["ansible-lint>=6.0.0", "yamllint>=1.28.0", "ruff>=0.6.0"]
 
 
 [tool.yamllint]
