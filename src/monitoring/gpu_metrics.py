@@ -4,7 +4,17 @@ import logging
 from typing import Any
 
 try:
-    import pynvml
+    from pynvml import (
+        NVML_TEMPERATURE_GPU,
+        NVMLError,
+        nvmlDeviceGetCount,
+        nvmlDeviceGetHandleByIndex,
+        nvmlDeviceGetMemoryInfo,
+        nvmlDeviceGetPowerUsage,
+        nvmlDeviceGetTemperature,
+        nvmlDeviceGetUtilizationRates,
+        nvmlInit,
+    )
 
     NVIDIA_AVAILABLE = True
 except ImportError:
@@ -20,11 +30,11 @@ def init_nvidia() -> bool:
         bool: True if initialization successful, False otherwise.
     """
     if not NVIDIA_AVAILABLE:
-        logger.warning("pynvml not available, GPU metrics will not be collected")
+        logger.warning("nvidia-ml-py not available, GPU metrics will not be collected")
         return False
 
     try:
-        pynvml.nvmlInit()
+        nvmlInit()
         logger.info("NVIDIA ML library initialized successfully")
         return True
     except Exception as e:
@@ -43,34 +53,32 @@ def get_gpu_metrics() -> dict[str, Any]:
         return {}
 
     try:
-        device_count = pynvml.nvmlDeviceGetCount()
+        device_count = nvmlDeviceGetCount()
         metrics = {}
 
         for i in range(device_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+            handle = nvmlDeviceGetHandleByIndex(i)
 
             # GPU utilization
-            util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+            util = nvmlDeviceGetUtilizationRates(handle)
             metrics[f"gpu_{i}_utilization"] = util.gpu
             metrics[f"gpu_{i}_memory_utilization"] = util.memory
 
             # Memory info
-            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            mem_info = nvmlDeviceGetMemoryInfo(handle)
             metrics[f"gpu_{i}_memory_total"] = mem_info.total
             metrics[f"gpu_{i}_memory_used"] = mem_info.used
             metrics[f"gpu_{i}_memory_free"] = mem_info.free
 
             # Temperature
-            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+            temp = nvmlDeviceGetTemperature(handle, NVML_TEMPERATURE_GPU)
             metrics[f"gpu_{i}_temperature"] = temp
 
             # Power usage
             try:
-                power = (
-                    pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0
-                )  # Convert to watts
+                power = nvmlDeviceGetPowerUsage(handle) / 1000.0  # Convert to watts
                 metrics[f"gpu_{i}_power_draw"] = power
-            except pynvml.NVMLError:
+            except NVMLError:
                 # Power usage not available on all GPUs
                 pass
 

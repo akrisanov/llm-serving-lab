@@ -8,7 +8,7 @@ This directory contains reusable Python modules for LLM serving lab components.
 src/
 ├── monitoring/              # Metrics collection modules
 │   ├── metrics_exporter.py  # Main exporter class and entry point
-│   ├── gpu_metrics.py       # NVIDIA GPU metrics via pynvml
+│   ├── gpu_metrics.py       # NVIDIA GPU metrics via nvidia-ml-py
 │   ├── system_metrics.py    # System metrics via psutil
 │   └── vllm_metrics.py      # vLLM API metrics via HTTP
 ├── deployment/              # Deployment utilities (future)
@@ -91,7 +91,7 @@ metrics = exporter.collect_metrics()
 
 ### monitoring.gpu_metrics
 
-**NVIDIA GPU metrics collection via pynvml.**
+**NVIDIA GPU metrics collection via nvidia-ml-py.**
 
 ```python
 from monitoring.gpu_metrics import init_nvidia, get_gpu_metrics
@@ -160,7 +160,7 @@ metrics = get_vllm_metrics(port=8000)
 - `opentelemetry-api>=1.20.0`: OpenTelemetry metrics API
 - `opentelemetry-sdk>=1.20.0`: OpenTelemetry SDK
 - `opentelemetry-exporter-otlp>=1.20.0`: OTLP exporter for sending metrics
-- `pynvml>=11.5.0`: NVIDIA GPU metrics (optional, graceful fallback)
+- `nvidia-ml-py>=12.0.0`: NVIDIA GPU metrics (optional, graceful fallback)
 - `psutil>=5.9.0`: System metrics
 - `requests>=2.31.0`: HTTP client for vLLM metrics
 

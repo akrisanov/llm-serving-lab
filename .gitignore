@@ -89,3 +89,6 @@ id_ed25519.pub
 
 # Logs
 *.log
+
+# Python
+**/__pycache__/
