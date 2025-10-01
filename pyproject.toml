@@ -30,6 +30,8 @@ monitoring = [
     "requests>=2.31.0",
 ]
 
+loadgen = ["httpx>=0.25.0", "pydantic>=2.0.0"]
+
 [project.urls]
 Homepage = "https://github.com/akrisanov/llm-serving-lab"
 Repository = "https://github.com/akrisanov/llm-serving-lab"
