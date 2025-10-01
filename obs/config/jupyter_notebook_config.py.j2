@@ -1,0 +1,22 @@
+# Jupyter Notebook Configuration for LLM Serving Lab
+# Simplified configuration for OBS VM deployment
+
+c = get_config()  # noqa
+
+# Network Configuration
+c.NotebookApp.ip = '0.0.0.0'  # Listen on all interfaces
+c.NotebookApp.port = {{ jupyter_port | default(8888) }}
+c.NotebookApp.open_browser = False  # Don't open browser on start
+c.NotebookApp.browser = ''  # No browser command
+
+# Working Directory
+c.NotebookApp.notebook_dir = '/opt/llm-serving-lab'
+
+# Security Configuration
+c.NotebookApp.allow_root = True  # Allow running as root (systemd service)
+c.NotebookApp.password_required = True  # Require password authentication
+c.NotebookApp.password = '{{ jupyter_setup_password_hash }}'
+c.NotebookApp.token = '{{ jupyter_setup_token }}'
+
+# Features
+c.NotebookApp.terminals_enabled = True  # Enable terminal access for debugging

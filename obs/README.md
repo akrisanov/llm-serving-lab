@@ -1,15 +1,23 @@
 # Observability Stack
 
 This stack provides a separate Observability VM that collects metrics from your GPU VM,
-stores them in ClickHouse, and visualizes them in Grafana. The GPU VM stays clean —
+stores them in ClickHouse, and visualizes them in Grafana. Additionally, it includes
+Jupyter Notebook for interactive experimentation and load testing. The GPU VM stays clean —
 only lightweight exporters and an OTel agent run there. The heavy lifting (storage,
-dashboards) happens on the Obs VM.
+dashboards, analysis) happens on the Obs VM.
 
 ## Components
 
 - **`terraform/`** - Infrastructure provisioning (Yandex Cloud VMs, networking)
 - **`ansible/`** - Configuration management and service deployment
-- **`config/`** - Docker Compose and service configurations
+  - `docker` role - Docker and Docker Compose installation
+  - `obs_stack` role - ClickHouse, Grafana, OpenTelemetry deployment
+  - `jupyter_setup` role - Jupyter Notebook installation and configuration
+- **`config/`** - Configuration files for all services
+  - Docker Compose stack configuration
+  - Jupyter Notebook configuration template
+  - Grafana provisioning files
+  - OpenTelemetry Collector configuration
 - **`dashboards/`** - Grafana dashboard definitions (JSON format)
 - **`sql/`** - ClickHouse SQL scripts and schema management
 - **`Makefile`** - Convenient management commands for all operations
@@ -17,11 +25,11 @@ dashboards) happens on the Obs VM.
 ```mermaid
 flowchart LR
   subgraph gpu_vm["GPU VM"]
-    app[Training scripts]
+    vllm[vLLM API Server]
     nodeexp[node_exporter]
     dcgm[NVIDIA DCGM exporter]
     agent[OTel Collector - agent]
-    app -->|OTLP metrics| agent
+    vllm -->|OTLP metrics| agent
     nodeexp --> agent
     dcgm --> agent
   end
@@ -30,8 +38,12 @@ flowchart LR
     gateway[OTel Collector - gateway]
     ch[(ClickHouse)]
     gf[Grafana]
+    jupyter[Jupyter Notebook]
   end
 
+  admin[Admin/Researcher] -->|:8888| jupyter
+  admin -->|:3000| gf
+  jupyter -->|HTTP requests| vllm
   agent -->|OTLP| gateway
   gateway --> ch
   gf --> ch
@@ -214,9 +226,13 @@ make ssh
 
 **Access the services:**
 
-- **Grafana**: `http://<obs_public_ip>:3000` (admin/admin)
+- **Grafana**: `http://<obs_public_ip>:3000`
+  - Default credentials: admin/admin (change on first login)
+- **Jupyter Notebook**: `http://<obs_public_ip>:8888`
+  - Password and token are auto-generated during deployment
+  - Check `/opt/jupyter/.jupyter_password` on the VM for credentials
 - **ClickHouse**: `http://<obs_public_ip>:8123`
-- **OpenTelemetry**:
+- **OpenTelemetry Collector**:
   - gRPC: `<obs_public_ip>:4317`
   - HTTP: `<obs_public_ip>:4318`
 
@@ -228,6 +244,30 @@ terraform output obs_network_id obs_subnet_id
 
 # Use these values in gpu/terraform/terraform.tfvars
 ```
+
+## Using Jupyter Notebook
+
+The OBS VM includes a pre-configured Jupyter Notebook environment for interactive experimentation:
+
+**Features:**
+
+- Pre-installed load testing tools and dependencies
+- Access to the entire `llm-serving-lab` project
+- Direct network access to GPU VM for load testing
+- Terminal access for debugging and system administration
+
+**Getting Started:**
+
+1. Access Jupyter at `http://<obs_public_ip>:8888`
+2. Use the auto-generated password (found in `/opt/jupyter/.jupyter_password`)
+3. Navigate to the project notebooks for load testing examples
+4. Create new notebooks for custom experiments
+
+**Key Directories:**
+
+- `/opt/llm-serving-lab/` - Main project directory (mounted as working directory)
+- `/opt/llm-serving-lab/notebooks/` - Example notebooks and experiments
+- `/opt/llm-serving-lab/src/` - Load generator and utility modules
 
 ## Cleanup
 
@@ -307,6 +347,19 @@ chmod 600 ansible/group_vars/.vault_pass  # Fix permissions
 make validate      # Run health checks
 make logs         # View service logs
 make status-services  # Check service status
+```
+
+**Jupyter Notebook Issues:**
+
+```bash
+# If Jupyter is not accessible:
+make ssh                           # Connect to server
+sudo systemctl status jupyter      # Check Jupyter service status
+sudo systemctl restart jupyter     # Restart Jupyter service
+sudo journalctl -u jupyter -f      # View Jupyter logs
+
+# Check Jupyter credentials:
+sudo cat /opt/jupyter/.jupyter_password  # View generated password
 ```
 
 **Recovery Commands:**

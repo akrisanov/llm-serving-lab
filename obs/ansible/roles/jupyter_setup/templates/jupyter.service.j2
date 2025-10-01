@@ -1,0 +1,39 @@
+[Unit]
+Description=Jupyter Notebook Server for LLM Experiments
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+PIDFile=/run/jupyter/jupyter.pid
+ExecStart=/opt/jupyter/venv/bin/jupyter notebook --config=/opt/jupyter/config/jupyter_notebook_config.py
+User=jupyter
+Group=jupyter
+WorkingDirectory=/opt/llm-serving-lab
+Environment=PATH=/opt/jupyter/venv/bin
+Environment=PYTHONPATH=/opt/llm-serving-lab/src
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/llm-serving-lab
+ReadOnlyPaths=/opt/jupyter
+
+# Restart settings
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Resource limits
+MemoryMax=4G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jupyter
+
+[Install]
+WantedBy=multi-user.target

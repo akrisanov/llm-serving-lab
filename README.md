@@ -9,6 +9,7 @@ This repository provides **production-ready infrastructure** for LLM serving exp
 - **Automated Infrastructure**: Terraform + Ansible for GPU VMs and observability stack
 - **Pre-configured vLLM**: Ready-to-use inference server with Mistral-7B-Instruct model
 - **Full Observability**: GPU metrics, system monitoring, and API analytics in Grafana
+- **Interactive Experimentation**: Jupyter Notebook environment for load testing and analysis
 - **Scalable Foundation**: From single-node baselines to multi-GPU experiments
 - **Research-Ready**: Structured environment for AI infrastructure engineering experiments
 
@@ -48,9 +49,9 @@ See individual README files for detailed troubleshooting guides.
 The lab consists of two main components:
 
 - **GPU VM**: Runs vLLM inference server with automatic GPU monitoring
-- **Observability VM**: Collects metrics via OpenTelemetry, stores in ClickHouse, visualizes in Grafana
+- **Observability VM**: Collects metrics via OpenTelemetry, stores in ClickHouse, visualizes in Grafana, and provides Jupyter Notebook environment for interactive experimentation
 
-All metrics are collected off the GPU VM to keep inference performance unaffected by monitoring overhead.
+All metrics are collected off the GPU VM to keep inference performance unaffected by monitoring overhead. The Jupyter environment on the OBS VM enables researchers to perform load testing, analyze results, and iterate on experiments without impacting GPU resources.
 
 ## Key Features
 
@@ -61,6 +62,7 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 - **Model Ready**: Pre-configured Mistral-7B-Instruct (first startup takes 10-15 minutes for model loading)
 - **Comprehensive Monitoring**: GPU utilization, memory usage, API metrics
 - **Interactive Dashboards**: Real-time Grafana visualizations
+- **Jupyter Environment**: Pre-configured notebook environment with load testing tools
 - **Secure by Default**: VPC isolation, restricted access, encrypted secrets, API authentication
 - **Cost Optimized**: Easy VM start/stop, resource right-sizing
 
@@ -69,6 +71,8 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 - **Modular Architecture**: Reusable monitoring modules in `src/`
 - **Local Development**: Full IDE support with type hints and autocompletion
 - **Testing Tools**: CLI script for local metrics testing and debugging
+- **Load Testing Framework**: Async load generator with configurable scenarios
+- **Jupyter Integration**: Pre-installed development environment with all project dependencies
 - **Code Quality**: Ruff integration for consistent formatting and linting
 - **Infrastructure Integration**: Python modules deployed seamlessly via Ansible
 
@@ -86,6 +90,9 @@ All metrics are collected off the GPU VM to keep inference performance unaffecte
 ```text
 llm-serving-lab/
 ├── src/                   # Python modules for development
+│   ├── loadgen/           # Load testing framework
+│   │   ├── load_generator_v1.py  # Async load generator
+│   │   └── config.py             # Configuration management
 │   ├── monitoring/        # Metrics collection modules
 │   │   ├── metrics_exporter.py   # Main exporter class
 │   │   ├── gpu_metrics.py        # GPU metrics via NVIDIA ML
@@ -98,13 +105,15 @@ llm-serving-lab/
 │   ├── terraform/         # Infrastructure provisioning
 │   ├── Makefile           # GPU management commands
 │   └── README.md          # GPU setup instructions
-├── obs/                   # Observability stack (ClickHouse, Grafana)
+├── obs/                   # Observability stack (ClickHouse, Grafana, Jupyter)
 │   ├── dashboards/        # Grafana dashboards (JSON format)
 │   ├── sql/               # ClickHouse SQL scripts and schema
+│   ├── config/            # Service configurations (Jupyter, Docker Compose)
 │   ├── ansible/           # Ansible automation for deployment
 │   ├── terraform/         # Infrastructure provisioning
 │   ├── Makefile           # OBS management commands
 │   └── README.md          # Observability setup instructions
+├── notebooks/             # Jupyter notebooks for experiments and analysis
 ├── benchmarks/            # Performance benchmarks and analysis (planned)
 ├── notes/                 # Weekly deliverables and research notes
 ├── metrics-cli.py         # CLI tool for local metrics testing
@@ -218,8 +227,18 @@ For detailed information about Python modules and development workflow, see [src
    # Check GPU status
    make gpu-info
 
-   # View Grafana dashboards
-   # Access http://<obs-vm-ip>:3000
+   # Access monitoring interfaces
+   # Grafana: http://<obs-vm-ip>:3000
+   # Jupyter: http://<obs-vm-ip>:8888 (password in /opt/jupyter/.jupyter_password)
+   ```
+
+5. **Interactive Experimentation:**
+
+   ```bash
+   # Use Jupyter for load testing and analysis
+   # Access http://<obs-vm-ip>:8888
+   # Navigate to example notebooks for load testing scenarios
+   # Create custom experiments and analyze results
    ```
 
 See individual README files for detailed instructions.
@@ -227,7 +246,14 @@ See individual README files for detailed instructions.
 ## Observability Stack
 
 All metrics/logs are collected off the GPU VM into a dedicated **Observability VM**.
-This VM runs ClickHouse, Grafana, and an OpenTelemetry Collector (gateway).
+This VM runs ClickHouse, Grafana, OpenTelemetry Collector (gateway), and Jupyter Notebook.
+
+**Key Services:**
+
+- **ClickHouse**: High-performance time-series database for metrics storage
+- **Grafana**: Interactive dashboards and alerting (accessible at `:3000`)
+- **OpenTelemetry Collector**: Metrics aggregation gateway
+- **Jupyter Notebook**: Interactive experimentation environment (accessible at `:8888`)
 
 See [obs/README.md](obs/README.md) for Terraform + Ansible setup instructions.
 

@@ -34,6 +34,14 @@ resource "yandex_vpc_security_group" "obs_sg" {
     v4_cidr_blocks = [var.admin_cidr]
   }
 
+  # Jupyter 8888 -> from admin only
+  ingress {
+    protocol       = "TCP"
+    description    = "Jupyter from admin"
+    port           = 8888
+    v4_cidr_blocks = [var.admin_cidr]
+  }
+
   # ClickHouse HTTP 8123 -> from admin only
   ingress {
     protocol       = "TCP"

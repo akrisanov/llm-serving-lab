@@ -17,3 +17,9 @@ ch_native_port: 9000
 grafana_port: 3000
 otel_grpc_port: 4317
 otel_http_port: 4318
+
+# Jupyter configuration
+jupyter_port: 8888
+jupyter_password: "{{ vault_jupyter_password | default('llm-experiments') }}"
+jupyter_token: "{{ vault_jupyter_token | default('') }}"
+project_branch: "main"
