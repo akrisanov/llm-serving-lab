@@ -14,8 +14,8 @@
   ansible.builtin.get_url:
     url: https://astral.sh/uv/install.sh
     dest: /tmp/uv-install.sh
-    mode: '0755'
-  when: ansible_check_mode == false
+    mode: "0755"
+  when: not ansible_check_mode
 
 - name: Install uv (fast Python package manager)
   ansible.builtin.command: /tmp/uv-install.sh
@@ -87,7 +87,7 @@
   args:
     creates: /opt/jupyter/venv/lib/python3.10/site-packages/jupyter
   become: true
-  
+
 - name: Set ownership of venv to jupyter user (after uv install)
   ansible.builtin.file:
     path: /opt/jupyter/venv

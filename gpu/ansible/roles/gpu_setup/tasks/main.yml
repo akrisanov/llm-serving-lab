@@ -119,12 +119,34 @@
     - /opt/vllm/logs
     - /opt/vllm/config
 
-- name: Create Python virtual environment for vLLM
-  ansible.builtin.command: python3 -m venv /opt/vllm/venv
+- name: Install uv (fast Python package manager)
+  ansible.builtin.get_url:
+    url: https://astral.sh/uv/install.sh
+    dest: /tmp/uv-install.sh
+    mode: '0755'
+  when: not ansible_check_mode
+
+- name: Install uv
+  ansible.builtin.command: /tmp/uv-install.sh
+  args:
+    creates: /root/.local/bin/uv
+  environment:
+    CARGO_HOME: /root/.cargo
+  become: true
+
+- name: Create Python virtual environment for vLLM with uv
+  ansible.builtin.command: /root/.local/bin/uv venv /opt/vllm/venv --python python3
   args:
     creates: /opt/vllm/venv
   become: true
-  become_user: vllm
+
+- name: Set ownership of venv to vllm user
+  ansible.builtin.file:
+    path: /opt/vllm/venv
+    owner: vllm
+    group: vllm
+    recurse: true
+  become: true
 
 - name: Clone or update llm-serving-lab project
   ansible.builtin.git:
@@ -142,25 +164,21 @@
     recurse: true
   become: true
 
-- name: Install vLLM and dependencies
-  ansible.builtin.pip:
-    name:
-      - vllm
-      - transformers
-      - torch
-      - opentelemetry-instrumentation
-      - prometheus-client
-    virtualenv: /opt/vllm/venv
+- name: Install vLLM and monitoring dependencies with uv from pyproject.toml
+  ansible.builtin.shell: |
+    cd /opt/llm-serving-lab
+    /root/.local/bin/uv pip install --python /opt/vllm/venv/bin/python -e ".[vllm,monitoring]"
+  args:
+    creates: /opt/vllm/venv/lib/python3.10/site-packages/vllm
   become: true
-  become_user: vllm
 
-- name: Install llm-serving-lab project with monitoring dependencies
-  ansible.builtin.pip:
-    name: "/opt/llm-serving-lab[monitoring]"
-    virtualenv: /opt/vllm/venv
-    editable: true
+- name: Set ownership of venv to vllm user after package installation
+  ansible.builtin.file:
+    path: /opt/vllm/venv
+    owner: vllm
+    group: vllm
+    recurse: true
   become: true
-  become_user: vllm
 
 - name: Create vLLM startup script
   ansible.builtin.template:
