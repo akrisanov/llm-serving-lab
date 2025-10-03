@@ -24,6 +24,6 @@ project_branch: "main"
 
 # OpenTelemetry configuration
 # OBS VM internal IP - should be set via terraform output or environment variable
-obs_vm_internal_ip: "{{ ansible_env.OBS_VM_INTERNAL_IP | default('10.128.0.22') }}"
+obs_vm_internal_ip: "{{ ansible_env.OBS_VM_INTERNAL_IP | default('10.128.0.20') }}"
 otel_endpoint: "{{ obs_vm_internal_ip }}:4317"
 obs_otlp_endpoint: "http://{{ obs_vm_internal_ip }}:4317"

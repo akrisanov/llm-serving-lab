@@ -55,9 +55,8 @@ class MetricsExporter:
         logger.info(f"OBS endpoint: {obs_otlp_endpoint}")
         logger.info(f"vLLM port: {vllm_port}")
         logger.info(f"Collection interval: {collect_interval}s")
-        logger.info(
-            f"NVIDIA GPU support: {'available' if self.nvidia_available else 'not available'}"
-        )
+        gpu_status = "available" if self.nvidia_available else "not available"
+        logger.info(f"NVIDIA GPU support: {gpu_status}")
 
     def _setup_otel(self):
         """Setup OpenTelemetry metrics."""
@@ -70,8 +69,13 @@ class MetricsExporter:
             }
         )
 
+        # Handle endpoint URL properly - don't add http:// if already present
+        endpoint = self.obs_otlp_endpoint
+        if not endpoint.startswith(('http://', 'https://')):
+            endpoint = f"http://{endpoint}"
+        
         exporter = OTLPMetricExporter(
-            endpoint=f"http://{self.obs_otlp_endpoint}", insecure=True
+            endpoint=endpoint, insecure=True
         )
 
         reader = PeriodicExportingMetricReader(
