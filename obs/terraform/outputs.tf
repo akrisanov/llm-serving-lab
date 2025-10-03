@@ -5,3 +5,4 @@ output "ssh_user" { value = var.ssh_user }
 # Network outputs for GPU VM to use same network
 output "obs_network_id" { value = yandex_vpc_network.obs_net.id }
 output "obs_subnet_id" { value = yandex_vpc_subnet.obs_subnet.id }
+output "obs_subnet_cidr" { value = var.obs_cidr }

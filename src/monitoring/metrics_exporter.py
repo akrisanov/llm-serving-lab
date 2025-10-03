@@ -71,12 +71,10 @@ class MetricsExporter:
 
         # Handle endpoint URL properly - don't add http:// if already present
         endpoint = self.obs_otlp_endpoint
-        if not endpoint.startswith(('http://', 'https://')):
+        if not endpoint.startswith(("http://", "https://")):
             endpoint = f"http://{endpoint}"
-        
-        exporter = OTLPMetricExporter(
-            endpoint=endpoint, insecure=True
-        )
+
+        exporter = OTLPMetricExporter(endpoint=endpoint, insecure=True)
 
         reader = PeriodicExportingMetricReader(
             exporter=exporter, export_interval_millis=self.collect_interval * 1000

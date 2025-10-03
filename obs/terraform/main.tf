@@ -76,7 +76,7 @@ resource "yandex_vpc_security_group" "obs_sg" {
   ingress {
     protocol       = "ICMP"
     description    = "ICMP from internal subnet"
-    v4_cidr_blocks = ["10.128.0.0/24"]
+    v4_cidr_blocks = [var.obs_cidr]
   }
 
   egress {

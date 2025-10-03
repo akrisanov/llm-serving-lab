@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy status clean install deploy config vault-create vault-edit vault-view test ssh
+.PHONY: help init plan apply destroy status clean install deploy config vault-create vault-edit vault-view ssh
 
 # Default target
 help: ## Show this help message
@@ -30,11 +30,16 @@ apply: ## Apply Terraform configuration
 destroy: ## Destroy Terraform infrastructure
 	cd terraform && terraform destroy
 
-status: ## Show Terraform state
+status: ## Show Terraform state and service status
 	cd terraform && terraform show
+	@if [ -f ansible/inventory.ini ]; then \
+		echo "\n=== Service Status ==="; \
+		cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose ps"; \
+	fi
 
-validate-terraform: ## Validate Terraform configuration
+validate: ## Validate Terraform and Ansible configuration
 	cd terraform && terraform validate
+	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --syntax-check
 
 fmt: ## Format Terraform files
 	cd terraform && terraform fmt -recursive
@@ -43,11 +48,21 @@ fmt: ## Format Terraform files
 install: ## Install Ansible dependencies
 	cd ansible && ansible-galaxy install -r requirements.yml
 
-deploy: ## Deploy services with Ansible
+deploy: update-inventory ## Deploy services with Ansible (auto-updates inventory)
 	@if [ -f ansible/inventory.ini ]; then \
 		cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml; \
 	else \
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
+		exit 1; \
+	fi
+
+update-inventory: ## Update Ansible inventory with current IP from terraform
+	@if [ -f terraform/terraform.tfstate ]; then \
+		OBS_IP=$$(cd terraform && terraform output -raw obs_public_ip); \
+		sed -i '' "s/obs-vm ansible_host=.* /obs-vm ansible_host=$$OBS_IP /" ansible/inventory.ini; \
+		echo "Updated inventory.ini with IP: $$OBS_IP"; \
+	else \
+		echo "Error: terraform.tfstate not found. Deploy infrastructure first with 'make apply'."; \
 		exit 1; \
 	fi
 
@@ -67,10 +82,7 @@ ping: ## Test connectivity to hosts
 		exit 1; \
 	fi
 
-facts: ## Gather facts from hosts
-	cd ansible && ansible -i inventory.ini all -m setup
-
-# Vault commands
+# Vault commands (only essential ones)
 vault-create: ## Create new encrypted vault file
 	cd ansible && ansible-vault create group_vars/obs/vault.yml
 
@@ -80,29 +92,20 @@ vault-edit: ## Edit encrypted vault file
 vault-view: ## View encrypted vault file
 	cd ansible && ansible-vault view group_vars/obs/vault.yml
 
-vault-encrypt: ## Encrypt existing vault file
-	cd ansible && ansible-vault encrypt group_vars/obs/vault.yml
-
-vault-decrypt: ## Decrypt vault file
-	cd ansible && ansible-vault decrypt group_vars/obs/vault.yml
-
-vault-password: ## Create vault password file for automatic authentication
-	@read -s -p "Enter vault password: " password; \
-	echo; \
-	echo "$$password" > ansible/group_vars/.vault_pass; \
-	chmod 600 ansible/group_vars/.vault_pass; \
-	echo "Vault password file created at ansible/group_vars/.vault_pass"
-
-# Testing and verification
-test: ## Run connectivity and service tests
-	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --tags verify
-
-validate: ## Validate all services are healthy
-	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --tags validate
-
-restart-services: ## Restart all services (safer than full redeploy)
+# Service management
+services: ## Manage services: restart, logs, or stop (usage: make services ACTION=restart|logs|stop)
+	@if [ -z "$(ACTION)" ]; then \
+		echo "Usage: make services ACTION=restart|logs|stop|status"; \
+		exit 1; \
+	fi
 	@if [ -f ansible/inventory.ini ]; then \
-		cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose restart"; \
+		case "$(ACTION)" in \
+			restart) cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose restart";; \
+			logs) cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose logs -f --tail=50";; \
+			stop) cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose down";; \
+			status) cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose ps";; \
+			*) echo "Invalid action. Use: restart, logs, stop, or status";; \
+		esac; \
 	else \
 		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
 		exit 1; \
@@ -116,43 +119,20 @@ ssh: ## SSH to obs server
 		exit 1; \
 	fi
 
-logs: ## Show service logs on remote host
-	@if [ -f ansible/inventory.ini ]; then \
-		cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose logs"; \
-	else \
-		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
-		exit 1; \
-	fi
-
-status-services: ## Check service status on remote host
-	@if [ -f ansible/inventory.ini ]; then \
-		cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose ps"; \
-	else \
-		echo "Error: inventory.ini not found. Run 'make copy-examples' and configure it first."; \
-		exit 1; \
-	fi
-
 # Cleanup commands
 clean: ## Clean local Terraform and Ansible cache
 	rm -rf terraform/.terraform
 	rm -rf ansible/collections
 	rm -f terraform/terraform.tfstate.backup
 
-clean-remote: ## Stop and remove services on remote host
-	cd ansible && ansible -i inventory.ini obs -m shell -a "cd /opt/obs && docker compose down -v"
-
 # Full deployment workflow
 setup: init install ## Initialize Terraform and install Ansible dependencies
-
 deploy-all: apply deploy ## Deploy infrastructure and configure services
-
-teardown: clean-remote destroy ## Stop services and destroy infrastructure
+teardown: ## Stop services and destroy infrastructure (usage: make teardown ACTION=stop followed by make destroy)
+	@echo "First stop services with: make services ACTION=stop"
+	@echo "Then destroy infrastructure with: make destroy"
 
 # Development helpers
 copy-examples: ## Copy example files for configuration
 	cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 	cp ansible/inventory.ini.example ansible/inventory.ini
-
-check-config: ## Validate all configuration files
-	cd terraform && terraform validate
-	cd ansible && ansible-playbook -i inventory.ini playbooks/site.yml --syntax-check

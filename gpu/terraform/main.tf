@@ -53,7 +53,7 @@ resource "yandex_vpc_security_group" "sg" {
   # Allow ICMP (ping) from internal subnet
   ingress {
     protocol       = "ICMP"
-    v4_cidr_blocks = ["10.128.0.0/24"]
+    v4_cidr_blocks = [var.obs_subnet_cidr]
     description    = "ICMP from internal subnet"
   }
 
@@ -61,8 +61,16 @@ resource "yandex_vpc_security_group" "sg" {
   ingress {
     protocol       = "TCP"
     port           = 9090
-    v4_cidr_blocks = ["10.128.0.0/24"]
+    v4_cidr_blocks = [var.obs_subnet_cidr]
     description    = "Metrics exporter from internal subnet"
+  }
+
+  # Allow vLLM API from internal subnet (for OBS VM access)
+  ingress {
+    protocol       = "TCP"
+    port           = var.vllm_port
+    v4_cidr_blocks = [var.obs_subnet_cidr]
+    description    = "vLLM API from internal subnet"
   }
 }
 

@@ -23,7 +23,7 @@ max_tokens: "128" # Max tokens per response for load testing
 project_branch: "main"
 
 # OpenTelemetry configuration
-# OBS VM internal IP - should be set via terraform output or environment variable
-obs_vm_internal_ip: "{{ ansible_env.OBS_VM_INTERNAL_IP | default('10.128.0.20') }}"
+# OBS VM internal IP - automatically set from OBS terraform output
+obs_vm_internal_ip: "{{ ansible_env.OBS_VM_INTERNAL_IP | default(lookup('env', 'OBS_VM_INTERNAL_IP')) }}"
 otel_endpoint: "{{ obs_vm_internal_ip }}:4317"
 obs_otlp_endpoint: "http://{{ obs_vm_internal_ip }}:4317"

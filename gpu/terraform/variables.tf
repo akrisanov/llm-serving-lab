@@ -24,6 +24,11 @@ variable "obs_subnet_id" {
   description = "ID of existing OBS subnet"
 }
 
+variable "obs_subnet_cidr" {
+  type        = string
+  description = "CIDR block of OBS subnet for security group rules"
+}
+
 variable "vm_user" {
   type    = string
   default = "ubuntu"
