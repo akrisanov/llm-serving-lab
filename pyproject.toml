@@ -4,13 +4,16 @@ version = "0.1.0"
 description = "A long-term lab for LLM serving experiments with comprehensive monitoring"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 authors = [{ name = "akrisanov" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
 
@@ -69,8 +72,8 @@ verbosity = 1
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.13+
-target-version = "py313"
+# Assume Python 3.10+
+target-version = "py310"
 
 # Include src directory and CLI script
 extend-include = ["src/**/*.py", "metrics-cli.py"]

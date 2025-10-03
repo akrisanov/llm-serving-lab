@@ -10,6 +10,21 @@
     state: present
     update_cache: true
 
+- name: Download uv installer
+  ansible.builtin.get_url:
+    url: https://astral.sh/uv/install.sh
+    dest: /tmp/uv-install.sh
+    mode: '0755'
+  when: ansible_check_mode == false
+
+- name: Install uv (fast Python package manager)
+  ansible.builtin.command: /tmp/uv-install.sh
+  args:
+    creates: /root/.cargo/bin/uv
+  environment:
+    CARGO_HOME: /root/.cargo
+  become: true
+
 - name: Create jupyter user
   ansible.builtin.user:
     name: jupyter
@@ -30,19 +45,31 @@
     - /opt/jupyter/config
     - /opt/jupyter/logs
 
-- name: Create Python virtual environment for Jupyter
-  ansible.builtin.command: python3 -m venv /opt/jupyter/venv
+- name: Create Python virtual environment with uv
+  ansible.builtin.command: uv venv /opt/jupyter/venv --python python3
   args:
     creates: /opt/jupyter/venv
   become: true
-  become_user: jupyter
+
+- name: Set ownership of venv to jupyter user
+  ansible.builtin.file:
+    path: /opt/jupyter/venv
+    owner: jupyter
+    group: jupyter
+    recurse: true
+  become: true
+
+- name: Remove existing project directory
+  ansible.builtin.file:
+    path: /opt/llm-serving-lab
+    state: absent
+  become: true
 
 - name: Clone llm-serving-lab project
   ansible.builtin.git:
     repo: "https://github.com/akrisanov/llm-serving-lab.git"
     dest: /opt/llm-serving-lab
     version: "{{ project_branch | default('main') }}"
-    force: true
   become: true
 
 - name: Set ownership of project directory
@@ -53,13 +80,21 @@
     recurse: true
   become: true
 
-- name: Install llm-serving-lab project with experiments dependencies
-  ansible.builtin.pip:
-    name: "/opt/llm-serving-lab[experiments,loadgen]"
-    virtualenv: /opt/jupyter/venv
-    editable: true
+- name: Install experiments dependencies with uv from pyproject.toml
+  ansible.builtin.shell: |
+    cd /opt/llm-serving-lab
+    /root/.local/bin/uv pip install --python /opt/jupyter/venv/bin/python -e ".[experiments,loadgen]"
+  args:
+    creates: /opt/jupyter/venv/lib/python3.10/site-packages/jupyter
   become: true
-  become_user: jupyter
+  
+- name: Set ownership of venv to jupyter user (after uv install)
+  ansible.builtin.file:
+    path: /opt/jupyter/venv
+    owner: jupyter
+    group: jupyter
+    recurse: true
+  become: true
 
 - name: Generate Jupyter password hash
   ansible.builtin.shell: |
@@ -68,7 +103,6 @@
   when: jupyter_password is defined
   changed_when: false
   become: true
-  become_user: jupyter
 
 - name: Set default Jupyter password hash if not provided
   ansible.builtin.set_fact:
@@ -83,7 +117,6 @@
   when: jupyter_token is not defined
   changed_when: false
   become: true
-  become_user: jupyter
 
 - name: Set Jupyter token
   ansible.builtin.set_fact:
