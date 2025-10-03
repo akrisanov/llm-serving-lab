@@ -3,6 +3,7 @@ Load Generator V1
 """
 
 import asyncio
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -20,11 +21,13 @@ class RequestResult:
     """Result of a single API request."""
 
     latency_ms: float
+    ttft_ms: float | None  # Time-to-First-Token for streaming
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
     success: bool
     error: str | None = None
+    tokens_per_second: float | None = None  # Generation speed
 
 
 @dataclass
@@ -37,6 +40,8 @@ class LoadTestResults:
     total_tokens: int
     elapsed_time: float
     latencies: list[float]
+    ttft_latencies: list[float]  # Time-to-First-Token measurements
+    generation_speeds: list[float]  # Tokens per second per request
 
     @property
     def success_rate(self) -> float:
@@ -60,16 +65,70 @@ class LoadTestResults:
         return 0.0
 
     def get_percentile(self, percentile: float) -> float:
-        """Calculate latency percentile."""
+        """Calculate latency percentile using nearest-rank method."""
         if not self.latencies:
             return 0.0
 
         sorted_latencies = sorted(self.latencies)
-        index = min(
-            max(int(percentile / 100 * len(sorted_latencies)) - 1, 0),
-            len(sorted_latencies) - 1,
-        )
-        return round(sorted_latencies[index], 1)
+        n = len(sorted_latencies)
+
+        # Use nearest-rank method: P = (percentile/100) * n
+        rank = percentile / 100 * n
+
+        # Convert to 0-based index
+        if rank == int(rank) and rank > 0:
+            # Exact rank - average with next value for better accuracy
+            index = int(rank) - 1
+            if index + 1 < n:
+                value = (sorted_latencies[index] + sorted_latencies[index + 1]) / 2
+            else:
+                value = sorted_latencies[index]
+        else:
+            # Round up to next index
+            index = min(int(rank), n - 1)
+            value = sorted_latencies[index]
+
+        return round(value, 1)
+
+    def get_ttft_percentile(self, percentile: float) -> float:
+        """Calculate TTFT percentile using nearest-rank method."""
+        if not self.ttft_latencies:
+            return 0.0
+
+        sorted_ttft = sorted(self.ttft_latencies)
+        n = len(sorted_ttft)
+
+        # Use nearest-rank method: P = (percentile/100) * n
+        rank = percentile / 100 * n
+
+        # Convert to 0-based index
+        if rank == int(rank) and rank > 0:
+            # Exact rank - average with next value for better accuracy
+            index = int(rank) - 1
+            if index + 1 < n:
+                value = (sorted_ttft[index] + sorted_ttft[index + 1]) / 2
+            else:
+                value = sorted_ttft[index]
+        else:
+            # Round up to next index
+            index = min(int(rank), n - 1)
+            value = sorted_ttft[index]
+
+        return round(value, 1)
+
+    @property
+    def avg_generation_speed(self) -> float:
+        """Calculate average generation speed (tokens/sec per request)."""
+        if not self.generation_speeds:
+            return 0.0
+        return sum(self.generation_speeds) / len(self.generation_speeds)
+
+    @property
+    def avg_ttft_ms(self) -> float:
+        """Calculate average Time-to-First-Token."""
+        if not self.ttft_latencies:
+            return 0.0
+        return sum(self.ttft_latencies) / len(self.ttft_latencies)
 
 
 class LoadGeneratorV1:
@@ -101,40 +160,119 @@ class LoadGeneratorV1:
         )
 
     def _create_payload(self) -> dict[str, Any]:
-        """Create request payload."""
-        return {
-            "model": self.config.model_name,
-            "messages": [{"role": "user", "content": "Say hi"}],
-            "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
-        }
+        """Create request payload using config template."""
+        return self.config.get_request_payload_template()
 
     async def _make_request(self) -> RequestResult:
         """Make a single API request and measure performance."""
         payload = self._create_payload()
         start_time = time.time()
+        ttft_time = None
 
         try:
-            # Use separate timeout per request to avoid conflicts
-            response = await self.client.post(self.config.url, json=payload)
-            response.raise_for_status()
-            end_time = time.time()
+            if self.config.stream:
+                # Streaming request for TTFT measurement
+                async with self.client.stream(
+                    "POST", self.config.url, json=payload
+                ) as response:
+                    response.raise_for_status()
 
-            data = response.json()
-            usage = data.get("usage", {})
+                    first_token_time = None
+                    generation_start_time = None
+                    prompt_tokens = 0
+                    completion_tokens = 0
 
-            return RequestResult(
-                latency_ms=(end_time - start_time) * 1000,
-                prompt_tokens=usage.get("prompt_tokens", 0),
-                completion_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-                success=True,
-            )
+                    # Process streaming response
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+
+                        if line == "data: [DONE]":
+                            break
+
+                        try:
+                            # Parse SSE data
+                            data = json.loads(line[6:])  # Remove "data: " prefix
+
+                            # Check for first token (TTFT measurement)
+                            if "choices" in data and data["choices"]:
+                                choice = data["choices"][0]
+                                if "delta" in choice and choice["delta"].get("content"):
+                                    if first_token_time is None:
+                                        first_token_time = time.time()
+                                        ttft_time = (
+                                            first_token_time - start_time
+                                        ) * 1000
+                                        generation_start_time = first_token_time
+
+                                    # Count tokens (approximation: 4 chars = 1 token)
+                                    content = choice["delta"]["content"]
+                                    completion_tokens += max(1, len(content) // 4)
+
+                            # Extract token usage if available in final message
+                            if "usage" in data:
+                                prompt_tokens = data["usage"].get("prompt_tokens", 0)
+                                completion_tokens = data["usage"].get(
+                                    "completion_tokens", completion_tokens
+                                )
+
+                        except (json.JSONDecodeError, KeyError):
+                            # Skip malformed SSE events
+                            continue
+
+                    end_time = time.time()
+
+                    # Calculate generation speed (tokens/sec after first token)
+                    if generation_start_time and completion_tokens > 0:
+                        generation_time = end_time - generation_start_time
+                        tokens_per_second = (
+                            completion_tokens / generation_time
+                            if generation_time > 0
+                            else 0
+                        )
+                    else:
+                        tokens_per_second = 0.0
+
+                    return RequestResult(
+                        latency_ms=(end_time - start_time) * 1000,
+                        ttft_ms=ttft_time,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=prompt_tokens + completion_tokens,
+                        success=True,
+                        tokens_per_second=tokens_per_second,
+                    )
+            else:
+                # Non-streaming request (existing logic)
+                response = await self.client.post(self.config.url, json=payload)
+                response.raise_for_status()
+                end_time = time.time()
+
+                data = response.json()
+                usage = data.get("usage", {})
+                completion_tokens = usage.get("completion_tokens", 0)
+
+                # For non-streaming, estimate generation speed (no TTFT available)
+                generation_time = end_time - start_time
+                tokens_per_second = (
+                    completion_tokens / generation_time if generation_time > 0 else 0
+                )
+
+                return RequestResult(
+                    latency_ms=(end_time - start_time) * 1000,
+                    ttft_ms=None,  # Not measurable in non-streaming mode
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=completion_tokens,
+                    total_tokens=usage.get("total_tokens", 0),
+                    success=True,
+                    tokens_per_second=tokens_per_second,
+                )
 
         except httpx.TimeoutException as e:
             end_time = time.time()
             return RequestResult(
                 latency_ms=(end_time - start_time) * 1000,
+                ttft_ms=ttft_time,
                 prompt_tokens=0,
                 completion_tokens=0,
                 total_tokens=0,
@@ -145,6 +283,7 @@ class LoadGeneratorV1:
             end_time = time.time()
             return RequestResult(
                 latency_ms=(end_time - start_time) * 1000,
+                ttft_ms=ttft_time,
                 prompt_tokens=0,
                 completion_tokens=0,
                 total_tokens=0,
@@ -155,6 +294,7 @@ class LoadGeneratorV1:
             end_time = time.time()
             return RequestResult(
                 latency_ms=(end_time - start_time) * 1000,
+                ttft_ms=ttft_time,
                 prompt_tokens=0,
                 completion_tokens=0,
                 total_tokens=0,
@@ -221,6 +361,7 @@ class LoadGeneratorV1:
                 valid_results.append(
                     RequestResult(
                         latency_ms=0.0,
+                        ttft_ms=None,
                         prompt_tokens=0,
                         completion_tokens=0,
                         total_tokens=0,
@@ -247,8 +388,20 @@ class LoadGeneratorV1:
         successful_results = [r for r in results if r.success]
         failed_results = [r for r in results if not r.success]
 
-        total_tokens = sum(r.completion_tokens for r in successful_results)
+        total_tokens = sum(r.total_tokens for r in successful_results)
         latencies = [r.latency_ms for r in successful_results]
+
+        # Collect TTFT measurements (only available for streaming requests)
+        ttft_latencies = [
+            r.ttft_ms for r in successful_results if r.ttft_ms is not None
+        ]
+
+        # Collect generation speeds
+        generation_speeds = [
+            r.tokens_per_second
+            for r in successful_results
+            if r.tokens_per_second is not None
+        ]
 
         return LoadTestResults(
             total_requests=len(results),
@@ -257,6 +410,8 @@ class LoadGeneratorV1:
             total_tokens=total_tokens,
             elapsed_time=elapsed_time,
             latencies=latencies,
+            ttft_latencies=ttft_latencies,
+            generation_speeds=generation_speeds,
         )
 
     async def run(self) -> LoadTestResults:
@@ -303,24 +458,46 @@ class LoadGeneratorV1:
 
     def log_results(self, results: LoadTestResults) -> None:
         """Log structured results."""
-        logger.info(
-            "Load test completed",
-            extra={
-                "phase": "results",
-                "tokens_per_second": round(results.tokens_per_second, 2),
-                "requests_per_second": round(results.requests_per_second, 2),
-                "latency_p50": results.get_percentile(50),
-                "latency_p95": results.get_percentile(95),
-                "latency_p99": results.get_percentile(99),
-                "total_requests": results.total_requests,
-                "successful_requests": results.successful_requests,
-                "failed_requests": results.failed_requests,
-                "success_rate": round(results.success_rate, 4),
-                "concurrency": self.config.concurrency,
-                "total_tokens": results.total_tokens,
-                "elapsed_time": round(results.elapsed_time, 2),
-            },
-        )
+        # Log configuration summary first
+        logger.info("Load test configuration", extra=self.config.get_summary())
+
+        log_data = {
+            "phase": "results",
+            "tokens_per_second": round(results.tokens_per_second, 2),
+            "requests_per_second": round(results.requests_per_second, 2),
+            "latency_p50": results.get_percentile(50),
+            "latency_p95": results.get_percentile(95),
+            "latency_p99": results.get_percentile(99),
+            "total_requests": results.total_requests,
+            "successful_requests": results.successful_requests,
+            "failed_requests": results.failed_requests,
+            "success_rate": round(results.success_rate, 4),
+            "concurrency": self.config.concurrency,
+            "total_tokens": results.total_tokens,
+            "elapsed_time": round(results.elapsed_time, 2),
+        }
+
+        # Add TTFT metrics if available (streaming mode)
+        if results.ttft_latencies:
+            log_data.update(
+                {
+                    "ttft_avg_ms": round(results.avg_ttft_ms, 2),
+                    "ttft_p50": results.get_ttft_percentile(50),
+                    "ttft_p95": results.get_ttft_percentile(95),
+                    "ttft_p99": results.get_ttft_percentile(99),
+                    "streaming_enabled": True,
+                }
+            )
+        else:
+            log_data["streaming_enabled"] = False
+
+        # Add generation speed metrics if available
+        if results.generation_speeds:
+            log_data["avg_generation_speed_tps"] = round(
+                results.avg_generation_speed, 2
+            )
+
+        logger.info("Load test completed", extra=log_data)
 
 
 async def main() -> None:

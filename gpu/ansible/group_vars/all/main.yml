@@ -16,6 +16,9 @@ vllm_port: "8000"
 tensor_parallel_size: "1"
 max_model_len: "2048"
 
+# Load testing configuration
+max_tokens: "128" # Max tokens per response for load testing
+
 # Project configuration
 project_branch: "main"
 
